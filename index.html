@@ -20,7 +20,27 @@
       --bg: #f5f4f0; --panel: #f5f4f0; --border: #d0cfc9;
       --text: #1a1a1a; --muted: #999999; --accent: #1a1a1a;
       --canvas-bg: #e8e7e3; --font: 'Courier New', monospace;
+      --header-bg: #ffffff;
     }
+    [data-theme="dark"] {
+      --bg: #141414; --panel: #141414; --border: #2a2a2a;
+      --text: #cccccc; --muted: #555555; --accent: #39ff14;
+      --canvas-bg: #1a1a1a; --header-bg: #0e0e0e;
+    }
+    [data-theme="dark"] header { background: var(--header-bg); }
+    [data-theme="dark"] .modal-box { background: #1a1a1a; border-color: #2a2a2a; }
+    [data-theme="dark"] .modal-box h3 { color: var(--accent); }
+    [data-theme="dark"] select { background: #1e1e1e; color: var(--text); border-color: var(--border); }
+    [data-theme="dark"] input[type="range"] { background: var(--border); }
+    [data-theme="dark"] input[type="range"]::-webkit-slider-thumb { background: var(--accent); }
+    [data-theme="dark"] .slider-val-input { color: var(--accent); border-bottom-color: var(--border); }
+    [data-theme="dark"] .btn { border-color: var(--border); color: var(--muted); }
+    [data-theme="dark"] .btn:hover { background: #222; color: var(--accent); border-color: var(--accent); }
+    [data-theme="dark"] .btn-coffee { background: none; border-color: #e07820; color: #e07820; }
+    [data-theme="dark"] #panel { background: var(--panel); border-color: var(--border); }
+    [data-theme="dark"] .panel-section { border-color: var(--border); }
+    [data-theme="dark"] .section-title { color: var(--accent); }
+    [data-theme="dark"] .logo { color: var(--accent); }
     html, body { height: 100%; font-family: var(--font); color: var(--text); overflow: hidden; }
     body { display: grid; grid-template-columns: 290px 1fr; grid-template-rows: auto 1fr; height: 100vh; }
     header {
@@ -210,7 +230,10 @@
 </head>
 <body>
   <header>
-    <span class="logo">Badge It</span>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="logo">Badge It</span>
+      <button class="btn-icon" id="btn-darkmode" title="Toggle dark mode" style="font-size:12px">◐</button>
+    </div>
     <div class="header-right">
       <button class="btn-icon" id="btn-help">?</button>
       <button class="btn-icon" id="btn-about">i</button>
@@ -1952,6 +1975,21 @@
     });
     document.getElementById('btn-help').addEventListener('click', () => openModal('help-modal'));
     document.getElementById('btn-about').addEventListener('click', () => openModal('about-modal'));
+
+    // Dark mode toggle
+    const btnDark = document.getElementById('btn-darkmode');
+    let darkMode = false;
+    btnDark.addEventListener('click', () => {
+      darkMode = !darkMode;
+      document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : '');
+      btnDark.textContent = darkMode ? '◑' : '◐';
+      // Update canvas background
+      const canvasBg = darkMode ? 0x1a1a1a : 0xe8e7e3;
+      canvasArea.style.background = darkMode ? '#1a1a1a' : '';
+      if (!canvasPreviewActive) {
+        scene.background = new THREE.Color(canvasBg);
+      }
+    });
 
     document.querySelectorAll('.modal-close').forEach(btn => {
       btn.addEventListener('click', () => {
