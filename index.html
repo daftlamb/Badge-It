@@ -478,11 +478,15 @@
           depth: pathDepth, bevelEnabled,
           bevelThickness: currentBevelThickness, bevelSize: currentBevelSize,
           bevelSegments: currentBevelSegments,
-          curveSegments: 128,
+          curveSegments: 32,
         });
-        // Smooth side normals
-        geometry = mergeVertices(geometry, 0.001);
-        geometry.computeVertexNormals();
+        // Smooth side normals (only for round bevel)
+        if (currentBevelSegments > 1) {
+          try {
+            geometry = mergeVertices(geometry, 0.001);
+            geometry.computeVertexNormals();
+          } catch(e) { console.warn('mergeVertices failed', e); }
+        }
         const material = new THREE.MeshStandardMaterial({
           color: new THREE.Color(color),
           metalness: currentMetalness, roughness: currentRoughness,
