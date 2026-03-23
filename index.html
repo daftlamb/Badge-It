@@ -629,7 +629,12 @@
       bbox.getSize(size);
       const maxDim = Math.max(size.x, size.y);
       const scale = 2.0 / maxDim;
-      geometry.scale(scale, -scale, scale);
+      // Scale XY only, keep Z (depth) as-is so slider is effective
+      geometry.scale(scale, -scale, 1);
+      // Re-center Z after Y flip
+      geometry.computeBoundingBox();
+      const bboxZ = geometry.boundingBox;
+      geometry.translate(0, 0, -(bboxZ.max.z + bboxZ.min.z) / 2);
 
       return geometry;
     }
