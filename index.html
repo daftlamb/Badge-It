@@ -501,8 +501,10 @@
       // Convert world-space values to SVG coordinate space (will be scaled back by `scale`)
       // depth & bevel are specified in world units; divide by scale so after ×scale they equal the user value
       const sDepth  = currentDepth / scale;
-      const sBevelT = currentBevelThickness / scale;
-      const sBevelS = currentBevelSize / scale;
+      // Safety: bevel size must not exceed ~15% of SVG size to avoid geometry collapse
+      const maxBevel = Math.min(svgW, svgH) * 0.15;
+      const sBevelT = Math.min(currentBevelThickness / scale, maxBevel);
+      const sBevelS = Math.min(currentBevelSize / scale, maxBevel * 0.8);
 
       const group = new THREE.Group();
 
