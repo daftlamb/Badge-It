@@ -477,36 +477,34 @@
     function buildSVGGeometry(svgString) {
       const loader = new SVGLoader();
       const svgData = loader.parse(svgString);
-      const group = new THREE.Group();
-
-      // Get SVG size from viewBox or paths bbox
       const paths = svgData.paths;
       if (paths.length === 0) return null;
 
-      // Calculate scale from SVG viewBox
+      // Parse SVG dimensions to get scale factor
       const parser = new DOMParser();
-      const doc = parser.parseFromString(svgString, 'image/svg+xml');
-      const svgEl = doc.querySelector('svg');
+      const svgEl = parser.parseFromString(svgString, 'image/svg+xml').querySelector('svg');
       let svgW = 100, svgH = 100;
       if (svgEl) {
         const vb = svgEl.getAttribute('viewBox');
         if (vb) {
-          const parts = vb.trim().split(/[\s,]+/);
-          svgW = parseFloat(parts[2]) || 100;
-          svgH = parseFloat(parts[3]) || 100;
+          const p = vb.trim().split(/[\s,]+/);
+          svgW = parseFloat(p[2]) || 100;
+          svgH = parseFloat(p[3]) || 100;
         } else {
           svgW = parseFloat(svgEl.getAttribute('width')) || 100;
           svgH = parseFloat(svgEl.getAttribute('height')) || 100;
         }
       }
-      const maxDim = Math.max(svgW, svgH);
-      const scale = 2.0 / maxDim;
+      // scale: converts SVG units → world units (final XY size ≈ 2.0)
+      const scale = 2.0 / Math.max(svgW, svgH);
 
-      // All values in world space — Z is not scaled
-      const svgBevelSize = currentBevelSize / scale;
-      const svgBevelThickness = currentBevelThickness / scale;
-      const svgDepth = currentDepth;
-      const svgDepth = currentDepth;
+      // Convert world-space values to SVG coordinate space (will be scaled back by `scale`)
+      // depth & bevel are specified in world units; divide by scale so after ×scale they equal the user value
+      const sDepth  = currentDepth / scale;
+      const sBevelT = currentBevelThickness / scale;
+      const sBevelS = currentBevelSize / scale;
+
+      const group = new THREE.Group();
 
       paths.forEach((path) => {
         const shapes = SVGLoader.createShapes(path);
@@ -514,11 +512,11 @@
 
         const isBase = group.children.length === 0;
         const color = isBase ? layer1Color : layer2Color;
+        const pathDepth = isBase ? sDepth : sDepth * layer2DepthRatio;
 
-        const pathDepth = isBase ? svgDepth : svgDepth * layer2DepthRatio;
-        let geometry = new THREE.ExtrudeGeometry(shapes, {
+        const geometry = new THREE.ExtrudeGeometry(shapes, {
           depth: pathDepth, bevelEnabled,
-          bevelThickness: svgBevelThickness, bevelSize: svgBevelSize,
+          bevelThickness: sBevelT, bevelSize: sBevelS,
           bevelSegments: currentBevelSegments,
           curveSegments: 64,
         });
@@ -534,19 +532,17 @@
 
       if (group.children.length === 0) return null;
 
-      // Center and scale the group
+      // Center and uniformly scale XYZ — this brings all values back to world units
       const bbox = new THREE.Box3().setFromObject(group);
       const center = bbox.getCenter(new THREE.Vector3());
-
       group.children.forEach((child, i) => {
         child.geometry.translate(-center.x, -center.y, 0);
-        child.geometry.scale(scale, -scale, 1);  // Z not scaled: depth stays in world units
+        child.geometry.scale(scale, -scale, scale); // uniform scale: XYZ all consistent
         child.position.z = i === 0 ? 0 : layer2ZOffset;
       });
 
       const bbox2 = new THREE.Box3().setFromObject(group);
-      const centerZ = (bbox2.max.z + bbox2.min.z) / 2;
-      group.position.z = -centerZ;
+      group.position.z = -(bbox2.max.z + bbox2.min.z) / 2;
       return group;
     }
 
