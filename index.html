@@ -90,6 +90,31 @@
     #canvas-area { background: var(--canvas-bg); position: relative; overflow: hidden; }
     #canvas-area canvas { display: block; width: 100% !important; height: 100% !important; }
 
+    /* ── Canvas Mask Overlay ── */
+    #canvas-mask {
+      display: none;
+      position: absolute; inset: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+    #canvas-mask.active { display: block; }
+    /* Four dark curtains around the canvas frame */
+    .mask-curtain {
+      position: absolute;
+      background: rgba(0,0,0,0.55);
+      pointer-events: none;
+    }
+    /* Canvas frame border */
+    #canvas-frame {
+      position: absolute;
+      border: 1px solid rgba(255,255,255,0.5);
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
+      pointer-events: none;
+      z-index: 11;
+      display: none;
+    }
+    #canvas-frame.active { display: block; }
+
     /* Canvas preview thumbnail */
     #export-preview-wrap {
       position: absolute;
@@ -342,6 +367,15 @@
     <div class="panel-section">
       <div class="section-title">Canvas Export</div>
 
+      <div class="toggle-row" style="margin-bottom:12px">
+        <span class="toggle-label">canvas preview</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="canvas-preview-toggle" />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+
       <div class="field">
         <label class="section-label">size</label>
         <select id="export-size">
@@ -406,6 +440,8 @@
   <div id="panel-dots"></div>
 
   <div id="canvas-area">
+    <!-- Canvas crop frame overlay -->
+    <div id="canvas-frame"></div>
     <div id="export-preview-wrap" title="preview export · click to enlarge">
       <canvas id="export-preview-canvas" width="240" height="240"></canvas>
       <div id="export-preview-label">export preview</div>
@@ -761,6 +797,7 @@
       camera.left = -orthoSize * a; camera.right = orthoSize * a;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+      updateCanvasFrame();
     }
     window.addEventListener('resize', onResize);
 
@@ -936,10 +973,47 @@
       reader.readAsArrayBuffer(file);
     });
 
+    // Canvas preview toggle — frame overlay
+    const canvasFrame = document.getElementById('canvas-frame');
+    let canvasPreviewActive = false;
+
+    function updateCanvasFrame() {
+      if (!canvasPreviewActive) {
+        canvasFrame.classList.remove('active');
+        return;
+      }
+      canvasFrame.classList.add('active');
+      const p = getExportParams();
+      const area = canvasArea;
+      const aW = area.clientWidth, aH = area.clientHeight;
+      const aspect = p.W / p.H;
+      // fit canvas frame inside viewport, centered
+      let fw, fh;
+      if (aW / aH > aspect) {
+        fh = Math.round(aH * 0.85);
+        fw = Math.round(fh * aspect);
+      } else {
+        fw = Math.round(aW * 0.85);
+        fh = Math.round(fw / aspect);
+      }
+      const fx = Math.round((aW - fw) / 2);
+      const fy = Math.round((aH - fh) / 2);
+      canvasFrame.style.left = fx + 'px';
+      canvasFrame.style.top = fy + 'px';
+      canvasFrame.style.width = fw + 'px';
+      canvasFrame.style.height = fh + 'px';
+    }
+
+    document.getElementById('canvas-preview-toggle').addEventListener('change', (e) => {
+      canvasPreviewActive = e.target.checked;
+      updateCanvasFrame();
+    });
+
     // Export panel controls
     document.getElementById('export-size').addEventListener('change', (e) => {
       document.getElementById('custom-size-row').style.display = e.target.value === 'custom' ? '' : 'none';
       schedulePreview();
+      updateCanvasFrame();
     });
     document.getElementById('export-bg').addEventListener('change', (e) => {
       document.getElementById('export-bg-color-row').style.display = e.target.value === 'color' ? '' : 'none';
@@ -957,8 +1031,8 @@
     document.getElementById('caption-color').addEventListener('input', schedulePreview);
     document.getElementById('export-caption-name').addEventListener('input', schedulePreview);
     document.getElementById('export-caption-copy').addEventListener('input', schedulePreview);
-    document.getElementById('custom-w').addEventListener('input', schedulePreview);
-    document.getElementById('custom-h').addEventListener('input', schedulePreview);
+    document.getElementById('custom-w').addEventListener('input', () => { schedulePreview(); updateCanvasFrame(); });
+    document.getElementById('custom-h').addEventListener('input', () => { schedulePreview(); updateCanvasFrame(); });
 
     // Preview thumbnail
     const previewCanvas = document.getElementById('export-preview-canvas');
