@@ -1610,7 +1610,12 @@
       // Resize renderer → render → grab pixels
       renderer.setPixelRatio(1);
       renderer.setSize(W, renderH);
+      renderer.setViewport(0, 0, W, renderH);
+      renderer.setScissor(0, 0, W, renderH);
+      renderer.setScissorTest(true);
+      renderer.clear();
       renderer.render(scene, offCam);
+      renderer.setScissorTest(false);
 
       // Compose on 2D canvas
       const finalCanvas = document.createElement('canvas');
