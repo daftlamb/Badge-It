@@ -1546,6 +1546,11 @@
     function doCanvasExport() {
       if (!mesh) { alert('No model loaded.'); return; }
 
+      // Hide frame + caption overlay so they don't bleed into render
+      const wasFrameActive = canvasFrame.classList.contains('active');
+      canvasFrame.classList.remove('active');
+      captionOverlay.classList.remove('active');
+
       // Pause animate loop so it doesn't overwrite our render
       animating = false;
 
@@ -1630,6 +1635,12 @@
       scene.background = savedBg || new THREE.Color(0xe8e7e3);
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(savedW, savedH);
+
+      // Restore frame overlay
+      if (wasFrameActive) {
+        canvasFrame.classList.add('active');
+        updateCaptionOverlay();
+      }
 
       // Restart animate loop
       animating = true;
