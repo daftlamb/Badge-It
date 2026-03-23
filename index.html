@@ -941,41 +941,61 @@
 
     function applyMatcapAndNormal() {
       if (!mesh) return;
-      const targets = mesh.isGroup ? mesh.children.map(c => c.material) : [mat];
+      const targets = mesh.isGroup ? mesh.children : (mesh.isMesh ? [mesh] : []);
+      if (!targets.length) return;
 
-      // Load matcap if changed
+      // Dispose old textures
       if (matcapTexture) { matcapTexture.dispose(); matcapTexture = null; }
-      if (currentMatcap !== 'none') {
-        const img = new Image(); img.src = MATCAP_MAP[currentMatcap];
-        matcapTexture = new THREE.Texture(img);
-        matcapTexture.colorSpace = THREE.SRGBColorSpace;
-        img.onload = () => { matcapTexture.needsUpdate = true; };
-      }
-
-      // Load normal map
       if (normalTexture) { normalTexture.dispose(); normalTexture = null; }
+
+      // Build normal map if needed (sync — canvas-based)
       if (currentNormalMap !== 'none') {
         normalTexture = makeNormalMapTexture(currentNormalMap);
       }
 
-      targets.forEach(mat => {
-        if (!mat) return;
-        if (currentMatcap !== 'none') {
-          // Switch to MatcapMaterial type by replacing shader — easiest: keep MeshStandard but use map
-          mat.matcap = matcapTexture;
-          // matcap overrides lighting when set on MeshMatcapMaterial; for Standard, just use as roughness visual
-          // We'll do a simple approach: set map = matcap for visual feel
-          mat.map = matcapTexture;
-        } else {
-          mat.map = null;
-          mat.matcap = null;
-        }
-        mat.normalMap = normalTexture || null;
-        if (normalTexture) {
-          mat.normalScale = new THREE.Vector2(currentNormalScale, currentNormalScale);
-        }
-        mat.needsUpdate = true;
-      });
+      if (currentMatcap !== 'none') {
+        // Load matcap image → TextureLoader (handles onload properly)
+        const loader = new THREE.TextureLoader();
+        loader.load(MATCAP_MAP[currentMatcap], (tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          matcapTexture = tex;
+          targets.forEach(child => {
+            const old = child.material;
+            // Replace with MeshMatcapMaterial
+            child.material = new THREE.MeshMatcapMaterial({
+              matcap: tex,
+              color: new THREE.Color(old.color ? old.color.getHex() : 0xffffff),
+              side: THREE.DoubleSide,
+            });
+            if (normalTexture) {
+              child.material.normalMap = normalTexture;
+              child.material.normalScale = new THREE.Vector2(currentNormalScale, currentNormalScale);
+            }
+            child.material.needsUpdate = true;
+            if (old && old !== child.material) old.dispose();
+          });
+        });
+      } else {
+        // Restore to MeshStandardMaterial
+        targets.forEach(child => {
+          const old = child.material;
+          const layerIdx = child.userData.layerIdx || 0;
+          const layer = layers[layerIdx] || layers[0];
+          const newMat = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(layer ? layer.color : currentColor),
+            metalness: currentMetalness,
+            roughness: currentRoughness,
+            side: THREE.DoubleSide,
+          });
+          if (normalTexture) {
+            newMat.normalMap = normalTexture;
+            newMat.normalScale = new THREE.Vector2(currentNormalScale, currentNormalScale);
+          }
+          child.material = newMat;
+          child.material.needsUpdate = true;
+          if (old && old !== child.material) old.dispose();
+        });
+      }
     }
 
     document.getElementById('matcap-select').addEventListener('change', (e) => {
