@@ -150,13 +150,13 @@
       <div id="bevel-sliders">
         <div class="slider-row">
           <span class="slider-label">thickness</span>
-          <input type="range" id="bevel-thickness" min="0.01" max="0.1" step="0.005" value="0.04" />
-          <span class="slider-val" id="bevel-thickness-val">0.040</span>
+          <input type="range" id="bevel-thickness" min="0.01" max="0.3" step="0.005" value="0.08" />
+          <span class="slider-val" id="bevel-thickness-val">0.080</span>
         </div>
         <div class="slider-row">
           <span class="slider-label">size</span>
-          <input type="range" id="bevel-size" min="0.01" max="0.08" step="0.005" value="0.02" />
-          <span class="slider-val" id="bevel-size-val">0.020</span>
+          <input type="range" id="bevel-size" min="0.01" max="0.2" step="0.005" value="0.05" />
+          <span class="slider-val" id="bevel-size-val">0.050</span>
         </div>
         <div class="field" id="bevel-type-wrap">
           <label class="section-label">bevel type</label>
@@ -172,6 +172,19 @@
           <option value="equal">Equal</option>
           <option value="stepped">Stepped</option>
         </select>
+      </div>
+    </div>
+    <!-- Per-layer colors (shown when SVG loaded) -->
+    <div id="layer-colors-wrap" style="display:none">
+      <div class="divider"></div>
+      <div class="section-title">Layer Colors</div>
+      <div class="color-row">
+        <span style="font-size:11px;color:var(--muted);flex:1">layer 1 (base)</span>
+        <input type="color" id="layer1-color" value="#1a1a1a" />
+      </div>
+      <div class="color-row">
+        <span style="font-size:11px;color:var(--muted);flex:1">layer 2+</span>
+        <input type="color" id="layer2-color" value="#c8a020" />
       </div>
     </div>
 
@@ -295,10 +308,12 @@
     let currentShape = 'circle';
     let currentDepth = 0.15;
     let bevelEnabled = true;
-    let currentBevelThickness = 0.04;
-    let currentBevelSize = 0.02;
+    let currentBevelThickness = 0.08;
+    let currentBevelSize = 0.05;
     let currentBevelSegments = 1;
     let currentLayerMode = 'equal';
+    let layer1Color = '#1a1a1a';
+    let layer2Color = '#c8a020';
     let currentMetalness = 0.9;
     let currentRoughness = 0.15;
     let currentColor = '#c8c8c8';
@@ -412,7 +427,7 @@
         const shapes = SVGLoader.createShapes(path);
         if (shapes.length === 0) return;
 
-        let color = currentColor;
+        let color = group.children.length === 0 ? layer1Color : layer2Color;
         let usesGlobalColor = true;
         const style = path.userData && path.userData.style;
         const fillColor = style && style.fill;
@@ -537,6 +552,7 @@
         uploadFilename.textContent = file.name;
         btnClear.classList.remove('hidden');
         sectionShape.classList.add('hidden');
+        document.getElementById('layer-colors-wrap').style.display = '';
         rebuildMesh();
       };
       reader.readAsText(file);
@@ -547,6 +563,7 @@
       uploadFilename.textContent = 'no file';
       btnClear.classList.add('hidden');
       sectionShape.classList.remove('hidden');
+      document.getElementById('layer-colors-wrap').style.display = 'none';
       rebuildMesh();
     });
 
@@ -578,6 +595,16 @@
     document.getElementById('layer-mode').addEventListener('change', (e) => {
       currentLayerMode = e.target.value;
       rebuildMesh();
+    });
+
+    // Layer color pickers
+    document.getElementById('layer1-color').addEventListener('input', e => {
+      layer1Color = e.target.value;
+      if (mesh && mesh.isGroup) rebuildMesh();
+    });
+    document.getElementById('layer2-color').addEventListener('input', e => {
+      layer2Color = e.target.value;
+      if (mesh && mesh.isGroup) rebuildMesh();
     });
 
     bevelTypeSelect.addEventListener('change', () => {
