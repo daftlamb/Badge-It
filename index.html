@@ -337,7 +337,7 @@
         </select>
       </div>
       <div class="field" style="margin-top:8px">
-        <label class="section-label">normal map</label>
+        <label class="section-label">normal map <span style="font-size:9px;color:var(--muted)">(front face · no matcap)</span></label>
         <select id="normalmap-select">
           <option value="none">None</option>
           <option value="brushed">Brushed Metal</option>
@@ -1002,6 +1002,18 @@
 
     document.getElementById('matcap-select').addEventListener('change', (e) => {
       currentMatcap = e.target.value;
+      // Normal map doesn't work with matcap — disable UI when matcap active
+      const nmWrap = document.getElementById('normalmap-select').closest('.field');
+      const nmScaleRow = document.getElementById('normalmap-scale-row');
+      if (currentMatcap !== 'none') {
+        nmWrap.style.opacity = '0.35';
+        nmWrap.style.pointerEvents = 'none';
+        nmScaleRow.style.display = 'none';
+      } else {
+        nmWrap.style.opacity = '';
+        nmWrap.style.pointerEvents = '';
+        if (currentNormalMap !== 'none') nmScaleRow.style.display = '';
+      }
       applyMatcapAndNormal();
     });
     document.getElementById('normalmap-select').addEventListener('change', (e) => {
@@ -1012,8 +1024,8 @@
     bindSlider('normalmap-scale', 'normalmap-scale-val', (v) => {
       currentNormalScale = v;
       if (normalTexture && mesh) {
-        const targets = mesh.isGroup ? mesh.children.map(c => c.material) : [mat];
-        targets.forEach(m => { if (m) { m.normalScale.set(v,v); m.needsUpdate = true; } });
+        const targets = mesh.isGroup ? mesh.children : (mesh.isMesh ? [mesh] : []);
+        targets.forEach(m => { if (m.material) { m.material.normalScale?.set(v,v); m.material.needsUpdate = true; } });
       }
     });
 
