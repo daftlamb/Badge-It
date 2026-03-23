@@ -86,6 +86,8 @@
     .color-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
     .color-label { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; flex: 0 0 80px; }
     input[type="color"] { width: 32px; height: 20px; border: 1px solid var(--border); background: none; cursor: pointer; padding: 1px; }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
     .color-hex { font-size: 10px; color: var(--text); }
     #canvas-area { background: var(--canvas-bg); position: relative; overflow: hidden; }
     #canvas-area canvas { display: block; width: 100% !important; height: 100% !important; }
@@ -1181,7 +1183,7 @@
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
             <span style="font-size:10px;font-weight:bold;letter-spacing:0.08em;color:var(--text);flex:1">Layer ${i+1}</span>
             <input type="color" value="${layer.color}" data-layer="${i}" data-prop="color"
-              style="width:28px;height:20px;border:none;padding:0;cursor:pointer;background:none" />
+              style="width:20px;height:20px;border-radius:50%;border:1px solid var(--border);padding:0;cursor:pointer;appearance:none;-webkit-appearance:none;overflow:hidden;flex-shrink:0" />
             ${i >= 2 ? `<button data-remove="${i}" style="font-family:var(--font);font-size:10px;border:none;background:none;color:var(--muted);cursor:pointer">✕</button>` : ''}
           </div>
           <div class="slider-row">
