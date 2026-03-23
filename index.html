@@ -437,7 +437,6 @@
 
   <div id="canvas-area">
     <!-- Canvas crop frame overlay -->
-    <div id="canvas-bg-overlay"></div>
     <div id="canvas-frame"></div>
     <!-- Caption preview overlay (inside frame) -->
     <div id="caption-overlay">
@@ -968,14 +967,31 @@
 
     // Canvas preview toggle — frame overlay
     const canvasFrame = document.getElementById('canvas-frame');
-    const canvasBgOverlay = document.getElementById('canvas-bg-overlay');
     let canvasPreviewActive = false;
+    let originalSceneBg = null; // save original bg when preview mode changes it
+
+    function applyPreviewBg() {
+      if (!canvasPreviewActive) return;
+      const bgMode = document.getElementById('export-bg').value;
+      if (bgMode === 'color') {
+        scene.background = new THREE.Color(document.getElementById('export-bg-color').value);
+      } else if (bgMode === 'transparent') {
+        scene.background = null;
+      }
+      // 'scene' mode: keep current scene.background unchanged
+    }
+
+    function restoreSceneBg() {
+      if (originalSceneBg !== undefined) {
+        scene.background = originalSceneBg;
+      }
+    }
 
     function updateCanvasFrame() {
       if (!canvasPreviewActive) {
         canvasFrame.classList.remove('active');
-        canvasBgOverlay.classList.remove('active');
         captionOverlay.classList.remove('active');
+        restoreSceneBg();
         return;
       }
       canvasFrame.classList.add('active');
@@ -998,36 +1014,17 @@
       canvasFrame.style.width = fw + 'px';
       canvasFrame.style.height = fh + 'px';
 
-      // bg overlay
-      if (p.bgMode === 'color') {
-        canvasBgOverlay.classList.add('active');
-        canvasBgOverlay.style.left = fx + 'px';
-        canvasBgOverlay.style.top = fy + 'px';
-        canvasBgOverlay.style.width = fw + 'px';
-        canvasBgOverlay.style.height = fh + 'px';
-        canvasBgOverlay.style.background = document.getElementById('export-bg-color').value;
-      } else if (p.bgMode === 'scene') {
-        canvasBgOverlay.classList.add('active');
-        canvasBgOverlay.style.left = fx + 'px';
-        canvasBgOverlay.style.top = fy + 'px';
-        canvasBgOverlay.style.width = fw + 'px';
-        canvasBgOverlay.style.height = fh + 'px';
-        canvasBgOverlay.style.background = '#' + scene.background.getHexString();
-      } else {
-        // transparent — show checkerboard hint
-        canvasBgOverlay.classList.add('active');
-        canvasBgOverlay.style.left = fx + 'px';
-        canvasBgOverlay.style.top = fy + 'px';
-        canvasBgOverlay.style.width = fw + 'px';
-        canvasBgOverlay.style.height = fh + 'px';
-        canvasBgOverlay.style.background = 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 16px 16px';
-      }
-
+      applyPreviewBg();
       updateCaptionOverlay();
     }
 
     document.getElementById('canvas-preview-toggle').addEventListener('change', (e) => {
       canvasPreviewActive = e.target.checked;
+      if (canvasPreviewActive) {
+        originalSceneBg = scene.background ? scene.background.clone() : null;
+      } else {
+        restoreSceneBg();
+      }
       updateCanvasFrame();
     });
 
