@@ -258,7 +258,7 @@
         <label class="section-label">environment</label>
         <select id="env-select">
           <option value="none">None</option>
-          <option value="studio">Studio</option>
+          <option value="studio" selected>Studio</option>
         </select>
       </div>
     </div>
@@ -312,6 +312,7 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
     import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
     let currentSVGString = null;
@@ -352,9 +353,22 @@
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     pmremGenerator.compileEquirectangularShader();
-    const studioEnvTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
-    const environments = { none: null, studio: studioEnvTexture };
-    function setEnvironment(key) { scene.environment = environments[key] || null; }
+    const roomEnvTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    const environments = { none: null, studio: roomEnvTexture };
+    function setEnvironment(key) {
+      scene.environment = environments[key] || null;
+      renderer.toneMappingExposure = key === 'none' ? 1.0 : 1.2;
+    }
+    setEnvironment('studio');
+    // Try to load bundled HDR for better quality
+    try {
+      new RGBELoader().load('studio.hdr', function(tex) {
+        environments.studio = pmremGenerator.fromEquirectangular(tex).texture;
+        tex.dispose();
+        const envSel = document.getElementById('environment');
+        if (envSel && envSel.value === 'studio') setEnvironment('studio');
+      });
+    } catch(e) { console.warn('HDR load failed, using RoomEnvironment'); }
 
     const orthoSize = 2.5;
     const aspect = canvasArea.clientWidth / canvasArea.clientHeight;
