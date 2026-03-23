@@ -804,10 +804,14 @@
         // Get layer for this path (default: path 0 → layer 0, rest → layer 1)
         const layerIdx = (pathLayerMap[pathIdx] !== undefined) ? pathLayerMap[pathIdx] : (pathIdx === 0 ? 0 : 1);
         const layer = layers[layerIdx] || layers[0];
+        const zOff = layer.zOffset || 0;
         const pathDepth = sDepth * (layer.depthRatio || 1.0);
+        // Add extra depth equal to |zOffset| so the back face sinks into lower layers — no visible seam
+        const extraDepth = Math.abs(zOff) / scale;
+        const totalDepth = pathDepth + extraDepth;
 
         const geometry = new THREE.ExtrudeGeometry(shapes, {
-          depth: pathDepth, bevelEnabled,
+          depth: totalDepth, bevelEnabled,
           bevelThickness: sBevelT, bevelSize: sBevelS,
           bevelSegments: currentBevelSegments,
           curveSegments: 64,
@@ -833,11 +837,17 @@
       group.children.forEach((child) => {
         const layerIdx = child.userData.layerIdx || 0;
         const layer = layers[layerIdx] || layers[0];
+        const zOff = layer.zOffset || 0;
         child.geometry.translate(-center.x, -center.y, 0);
         child.geometry.scale(scale, -scale, scale);
-        child.position.z = layer.zOffset || 0;
-        if ((layer.zOffset || 0) < 0) {
-          child.geometry.translate(0, 0, -layer.zOffset / (currentDepth * (layer.depthRatio || 1)) * 0.5);
+        // Shift geometry backward by extraDepth so front face is at zOffset, back face sinks into lower layer
+        const extraDepthWorld = Math.abs(zOff);
+        if (zOff >= 0) {
+          child.geometry.translate(0, 0, -extraDepthWorld);
+        }
+        child.position.z = zOff;
+        if (zOff < 0) {
+          child.geometry.translate(0, 0, -zOff / (currentDepth * (layer.depthRatio || 1)) * 0.5);
         }
       });
 
