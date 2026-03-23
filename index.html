@@ -450,18 +450,18 @@
       <div id="dof-controls" style="display:none">
         <div class="slider-row">
           <span class="slider-label">focus</span>
-          <input type="range" id="dof-focus" min="0.1" max="5" step="0.01" value="1" />
-          <input type="number" class="slider-val-input" id="dof-focus-val" value="1.00" step="any" />
+          <input type="range" id="dof-focus" min="0.0" max="1.0" step="0.001" value="0.5" />
+          <input type="number" class="slider-val-input" id="dof-focus-val" value="0.500" step="any" />
         </div>
         <div class="slider-row">
           <span class="slider-label">aperture</span>
-          <input type="range" id="dof-aperture" min="0.00001" max="0.0002" step="0.000001" value="0.00003" />
-          <input type="number" class="slider-val-input" id="dof-aperture-val" value="0.00003" step="any" />
+          <input type="range" id="dof-aperture" min="0.00001" max="0.001" step="0.000005" value="0.0002" />
+          <input type="number" class="slider-val-input" id="dof-aperture-val" value="0.0002" step="any" />
         </div>
         <div class="slider-row">
           <span class="slider-label">max blur</span>
-          <input type="range" id="dof-maxblur" min="0.001" max="0.03" step="0.001" value="0.01" />
-          <input type="number" class="slider-val-input" id="dof-maxblur-val" value="0.010" step="any" />
+          <input type="range" id="dof-maxblur" min="0.001" max="0.05" step="0.001" value="0.02" />
+          <input type="number" class="slider-val-input" id="dof-maxblur-val" value="0.020" step="any" />
         </div>
       </div>
 
@@ -773,8 +773,23 @@
       composer = new EffectComposer(renderer);
       renderPass = new RenderPass(scene, perspCam);
       composer.addPass(renderPass);
+
+      // Auto-calc focus: distance from perspCam to mesh center, normalized to [0,1] in depth buffer
+      let autoFocus = parseFloat(document.getElementById('dof-focus').value);
+      if (mesh) {
+        const bbox = new THREE.Box3().setFromObject(mesh);
+        const center = bbox.getCenter(new THREE.Vector3());
+        const dist = perspCam.position.distanceTo(center);
+        const near = perspCam.near, far = perspCam.far;
+        // NDC depth = (far*(dist-near)) / (dist*(far-near))  → normalize to 0~1
+        autoFocus = (far * (dist - near)) / (dist * (far - near));
+        autoFocus = Math.max(0, Math.min(1, autoFocus));
+        document.getElementById('dof-focus').value = autoFocus.toFixed(3);
+        document.getElementById('dof-focus-val').value = autoFocus.toFixed(3);
+      }
+
       bokehPass = new BokehPass(scene, perspCam, {
-        focus: parseFloat(document.getElementById('dof-focus').value),
+        focus: autoFocus,
         aperture: parseFloat(document.getElementById('dof-aperture').value),
         maxblur: parseFloat(document.getElementById('dof-maxblur').value),
       });
