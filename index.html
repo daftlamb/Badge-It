@@ -627,7 +627,7 @@
     };
 
     const canvasArea = document.getElementById('canvas-area');
-    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, logarithmicDepthBuffer: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, logarithmicDepthBuffer: true, alpha: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(canvasArea.clientWidth, canvasArea.clientHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1596,8 +1596,8 @@
       if (bgMode === 'color') {
         scene.background = new THREE.Color(document.getElementById('export-bg-color').value);
       } else if (bgMode === 'gradient') {
-        const { tex } = makeGradientTexture(W, renderH);
-        scene.background = tex;
+        // Don't use scene.background for gradient — render transparent and composite onto 2D gradient
+        scene.background = null;
       } else if (bgMode === 'transparent') {
         scene.background = null;
       }
@@ -1732,7 +1732,7 @@
       // Apply bg to scene
       const savedBg = scene.background ? scene.background.clone() : null;
       if (bgMode === 'color') scene.background = new THREE.Color(document.getElementById('export-bg-color').value);
-      else if (bgMode === 'gradient') { const {tex} = makeGradientTexture(512,512); if(gradTex) gradTex.dispose(); gradTex=tex; scene.background = tex; }
+      else if (bgMode === 'gradient') { scene.background = null; } // gradient drawn on offCanvas directly
       else if (bgMode === 'transparent') scene.background = new THREE.Color(0xe8e7e3);
 
       // Build offscreen composite canvas (this is what we record)
