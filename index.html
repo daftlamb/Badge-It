@@ -166,6 +166,13 @@
           </select>
         </div>
       </div>
+      <div class="field">
+        <label class="section-label">layer depth</label>
+        <select id="layer-mode">
+          <option value="equal">Equal</option>
+          <option value="stepped">Stepped</option>
+        </select>
+      </div>
     </div>
 
     <div class="panel-section">
@@ -289,6 +296,7 @@
     let currentBevelThickness = 0.04;
     let currentBevelSize = 0.02;
     let currentBevelSegments = 1;
+    let currentLayerMode = 'equal';
     let currentMetalness = 0.9;
     let currentRoughness = 0.15;
     let currentColor = '#c8c8c8';
@@ -326,7 +334,7 @@
     camera.lookAt(0, 0, 0);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enablePan = false;
+    controls.enablePan = true;  // right-click to pan
     controls.minPolarAngle = 0;
     controls.maxPolarAngle = Math.PI;
     controls.enableDamping = true;
@@ -408,8 +416,12 @@
           color = fillColor;
         }
 
+        // Stepped mode: first path uses full depth, subsequent paths use half depth
+        const pathDepth = (currentLayerMode === 'stepped' && group.children.length > 0)
+          ? currentDepth * 0.5
+          : currentDepth;
         let geometry = new THREE.ExtrudeGeometry(shapes, {
-          depth: currentDepth, bevelEnabled,
+          depth: pathDepth, bevelEnabled,
           bevelThickness: currentBevelThickness, bevelSize: currentBevelSize,
           bevelSegments: currentBevelSegments,
         });
@@ -556,6 +568,11 @@
     }, 3);
 
     const bevelTypeSelect = document.getElementById('bevel-type');
+    document.getElementById('layer-mode').addEventListener('change', (e) => {
+      currentLayerMode = e.target.value;
+      rebuildMesh();
+    });
+
     bevelTypeSelect.addEventListener('change', () => {
       currentBevelSegments = bevelTypeSelect.value === 'round' ? 8 : 1;
       if (bevelEnabled) rebuildMesh();
