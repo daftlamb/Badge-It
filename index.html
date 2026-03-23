@@ -413,11 +413,13 @@
         if (shapes.length === 0) return;
 
         let color = currentColor;
+        let usesGlobalColor = true;
         const style = path.userData && path.userData.style;
         const fillColor = style && style.fill;
         if (fillColor && fillColor !== 'none' && fillColor !== '#000000' &&
             fillColor !== '#ffffff' && fillColor !== 'black' && fillColor !== 'white') {
           color = fillColor;
+          usesGlobalColor = false;
         }
 
         // Stepped mode: first path uses full depth, subsequent paths use half depth
@@ -437,6 +439,7 @@
           metalness: currentMetalness, roughness: currentRoughness,
           side: THREE.DoubleSide,
         });
+        material._usesGlobalColor = usesGlobalColor;
         group.add(new THREE.Mesh(geometry, material));
       });
 
@@ -609,9 +612,14 @@
       // Update global mat (for preset shapes)
       mat.color.set(currentColor);
       mat.needsUpdate = true;
-      // For SVG groups, only update meshes that use global color (no per-path override)
+      // For SVG groups, update all children that don't have a per-path color override
       if (mesh && mesh.isGroup) {
-        rebuildMesh();
+        mesh.children.forEach(child => {
+          if (child.material && child.material._usesGlobalColor) {
+            child.material.color.set(currentColor);
+            child.material.needsUpdate = true;
+          }
+        });
       }
     });
 
