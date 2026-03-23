@@ -1471,68 +1471,131 @@
       const progress = document.getElementById('record-progress');
       const btn = document.getElementById('btn-record-video');
 
-      // Apply export bg to scene for recording
+      // Get export params (size, bg, caption)
+      const p = getExportParams();
+      const { W, H, bgMode, padding, captionName, captionCopy, captionSize, captionColor, hasCaption, lineH, captionH } = p;
+      const renderH = Math.max(H - captionH, 1);
+
+      // Apply bg to scene
       const savedBg = scene.background ? scene.background.clone() : null;
-      const bgMode = document.getElementById('export-bg').value;
       if (bgMode === 'color') scene.background = new THREE.Color(document.getElementById('export-bg-color').value);
       else if (bgMode === 'gradient') { const {tex} = makeGradientTexture(512,512); if(gradTex) gradTex.dispose(); gradTex=tex; scene.background = tex; }
-      else if (bgMode === 'transparent') scene.background = new THREE.Color(0xe8e7e3); // webm needs bg
+      else if (bgMode === 'transparent') scene.background = new THREE.Color(0xe8e7e3);
 
-      // Save mesh rotation
-      const savedRotY = mesh ? mesh.rotation.y : 0;
+      // Build offscreen composite canvas (this is what we record)
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = W; offCanvas.height = H;
+      const offCtx = offCanvas.getContext('2d');
 
-      // Enable auto-rotate for recording
+      // Build offscreen camera (same as PNG export)
+      const aspect = W / renderH;
+      const bbox = new THREE.Box3().setFromObject(mesh);
+      const bsphere = new THREE.Sphere();
+      bbox.getBoundingSphere(bsphere);
+      const r = bsphere.radius * (1 + padding);
+      const recCam = new THREE.OrthographicCamera(-r*aspect, r*aspect, r, -r, 0.001, 1000);
+      const camDir = camera.position.clone().normalize();
+      recCam.position.copy(bsphere.center).addScaledVector(camDir, r*4+2);
+      recCam.lookAt(bsphere.center);
+      recCam.updateProjectionMatrix();
+
+      // Resize main renderer to export size
+      const savedW = canvasArea.clientWidth, savedH = canvasArea.clientHeight;
+      renderer.setPixelRatio(1);
+      renderer.setSize(W, renderH);
+
+      // Enable auto-rotate
       const wasRotating = autoRotate;
       autoRotate = true;
       controls.enabled = false;
 
-      // Start capture
-      const stream = renderer.domElement.captureStream(60);
+      // Per-frame composite: render → copy to offCanvas → draw caption
+      function compositeFrame() {
+        renderer.render(scene, recCam);
+
+        // bg fill for caption area
+        if (bgMode === 'gradient') {
+          drawGradientOnCtx(offCtx, W, H);
+        } else {
+          const bgHex = bgMode === 'color'
+            ? document.getElementById('export-bg-color').value
+            : '#' + (savedBg ? savedBg.getHexString() : 'e8e7e3');
+          offCtx.fillStyle = bgHex;
+          offCtx.fillRect(0, 0, W, H);
+        }
+        offCtx.drawImage(renderer.domElement, 0, 0, W, renderH);
+
+        if (hasCaption) {
+          offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle';
+          let y = renderH + captionSize * 0.6;
+          if (captionName) {
+            offCtx.font = `400 ${captionSize}px 'Outfit','Courier New',monospace`;
+            offCtx.fillStyle = captionColor; offCtx.globalAlpha = 1;
+            offCtx.fillText(captionName, W/2, y); y += lineH;
+          }
+          if (captionCopy) {
+            offCtx.font = `300 ${Math.round(captionSize*0.75)}px 'Outfit','Courier New',monospace`;
+            offCtx.fillStyle = captionColor; offCtx.globalAlpha = 0.65;
+            offCtx.fillText(captionCopy, W/2, y); offCtx.globalAlpha = 1;
+          }
+        }
+      }
+
+      // Patch animate to also composite each frame
+      const origAnimate = animating;
+      let frameLoopActive = true;
+      function recordLoop() {
+        if (!frameLoopActive) return;
+        if (autoRotate && mesh) mesh.rotation.y += AUTO_ROTATE_SPEED;
+        compositeFrame();
+        requestAnimationFrame(recordLoop);
+      }
+      animating = false; // pause normal loop
+      requestAnimationFrame(recordLoop);
+
+      // Record offCanvas stream
+      const stream = offCanvas.captureStream(60);
       const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
         ? 'video/webm;codecs=vp9' : 'video/webm';
       mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
       recordChunks = [];
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordChunks.push(e.data); };
       mediaRecorder.onstop = () => {
+        frameLoopActive = false;
+
         const blob = new Blob(recordChunks, { type: mimeType });
         const videoUrl = URL.createObjectURL(blob);
 
-        // Show preview modal first — download only after user sees it
+        // Preview modal
         const player = document.getElementById('video-preview-player');
-        player.src = videoUrl;
-        player.play();
+        player.src = videoUrl; player.play();
         openModal('video-preview-modal');
 
-        // Download button
         const dlBtn = document.getElementById('btn-video-download-now');
         const dlHandler = () => {
           const a = document.createElement('a');
-          a.href = videoUrl;
-          a.download = 'badge-rotate.webm';
-          a.click();
+          a.href = videoUrl; a.download = 'badge-rotate.webm'; a.click();
           closeModal('video-preview-modal');
           URL.revokeObjectURL(videoUrl);
           dlBtn.removeEventListener('click', dlHandler);
         };
         dlBtn.addEventListener('click', dlHandler);
 
-        // Support button → open coffee modal, then come back
         document.getElementById('btn-video-support').onclick = () => {
           closeModal('video-preview-modal');
           pendingGlbDownload = false;
           openModal('coffee-modal');
-          // After coffee modal closes, re-open video preview
-          const onCoffeeClose = () => {
-            openModal('video-preview-modal');
-            document.getElementById('coffee-modal').removeEventListener('modalclose', onCoffeeClose);
-          };
         };
 
-        // Restore scene state
+        // Restore renderer & scene
         scene.background = savedBg || new THREE.Color(0xe8e7e3);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(savedW, savedH);
         autoRotate = wasRotating;
         controls.enabled = !wasRotating;
         document.getElementById('auto-rotate-toggle').checked = wasRotating;
+        animating = true; animate(); // restart normal loop
+
         statusWrap.style.display = 'none';
         btn.textContent = '▶ record video';
         btn.disabled = false;
@@ -1545,18 +1608,14 @@
       btn.textContent = '⏹ stop';
       btn.disabled = false;
 
-      // Progress bar + auto-stop
+      // Progress + auto-stop
       const start = performance.now();
       const tick = () => {
         if (!mediaRecorder) return;
         const elapsed = performance.now() - start;
-        const pct = Math.min(elapsed / RECORD_DURATION * 100, 100);
-        progress.style.width = pct + '%';
-        if (elapsed >= RECORD_DURATION) {
-          mediaRecorder.stop();
-        } else {
-          requestAnimationFrame(tick);
-        }
+        progress.style.width = Math.min(elapsed / RECORD_DURATION * 100, 100) + '%';
+        if (elapsed >= RECORD_DURATION) mediaRecorder.stop();
+        else requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
     }
