@@ -114,6 +114,14 @@
       display: none;
     }
     #canvas-frame.active { display: block; }
+    /* Background color overlay inside frame */
+    #canvas-bg-overlay {
+      position: absolute;
+      display: none;
+      pointer-events: none;
+      z-index: 10; /* below frame border, above 3D canvas */
+    }
+    #canvas-bg-overlay.active { display: block; }
     /* Caption overlay inside the frame */
     #caption-overlay {
       position: absolute;
@@ -429,6 +437,7 @@
 
   <div id="canvas-area">
     <!-- Canvas crop frame overlay -->
+    <div id="canvas-bg-overlay"></div>
     <div id="canvas-frame"></div>
     <!-- Caption preview overlay (inside frame) -->
     <div id="caption-overlay">
@@ -959,11 +968,13 @@
 
     // Canvas preview toggle — frame overlay
     const canvasFrame = document.getElementById('canvas-frame');
+    const canvasBgOverlay = document.getElementById('canvas-bg-overlay');
     let canvasPreviewActive = false;
 
     function updateCanvasFrame() {
       if (!canvasPreviewActive) {
         canvasFrame.classList.remove('active');
+        canvasBgOverlay.classList.remove('active');
         captionOverlay.classList.remove('active');
         return;
       }
@@ -986,6 +997,32 @@
       canvasFrame.style.top = fy + 'px';
       canvasFrame.style.width = fw + 'px';
       canvasFrame.style.height = fh + 'px';
+
+      // bg overlay
+      if (p.bgMode === 'color') {
+        canvasBgOverlay.classList.add('active');
+        canvasBgOverlay.style.left = fx + 'px';
+        canvasBgOverlay.style.top = fy + 'px';
+        canvasBgOverlay.style.width = fw + 'px';
+        canvasBgOverlay.style.height = fh + 'px';
+        canvasBgOverlay.style.background = document.getElementById('export-bg-color').value;
+      } else if (p.bgMode === 'scene') {
+        canvasBgOverlay.classList.add('active');
+        canvasBgOverlay.style.left = fx + 'px';
+        canvasBgOverlay.style.top = fy + 'px';
+        canvasBgOverlay.style.width = fw + 'px';
+        canvasBgOverlay.style.height = fh + 'px';
+        canvasBgOverlay.style.background = '#' + scene.background.getHexString();
+      } else {
+        // transparent — show checkerboard hint
+        canvasBgOverlay.classList.add('active');
+        canvasBgOverlay.style.left = fx + 'px';
+        canvasBgOverlay.style.top = fy + 'px';
+        canvasBgOverlay.style.width = fw + 'px';
+        canvasBgOverlay.style.height = fh + 'px';
+        canvasBgOverlay.style.background = 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 16px 16px';
+      }
+
       updateCaptionOverlay();
     }
 
@@ -1003,8 +1040,9 @@
     document.getElementById('export-bg').addEventListener('change', (e) => {
       document.getElementById('export-bg-color-row').style.display = e.target.value === 'color' ? '' : 'none';
       schedulePreview();
+      updateCanvasFrame();
     });
-    document.getElementById('export-bg-color').addEventListener('input', schedulePreview);
+    document.getElementById('export-bg-color').addEventListener('input', () => { schedulePreview(); updateCanvasFrame(); });
     document.getElementById('export-padding').addEventListener('input', (e) => {
       document.getElementById('export-padding-val').textContent = Math.round(e.target.value * 100) + '%';
       schedulePreview();
@@ -1088,22 +1126,32 @@
       captionLineCopy.style.lineHeight = '1.6';
     }
 
-    // Offscreen PNG render (full res)
+    // Offscreen PNG render (full res) — reuse main renderer context
     function doCanvasExport() {
       const p = getExportParams();
       const { W, H, bgMode, padding, captionName, captionCopy, captionSize, captionColor, hasCaption, lineH, captionH, renderH } = p;
 
-      const offR = new THREE.WebGLRenderer({ antialias: true, alpha: bgMode === 'transparent', preserveDrawingBuffer: true, logarithmicDepthBuffer: true });
-      offR.setPixelRatio(1);
-      offR.setSize(W, renderH);
-      offR.toneMapping = THREE.ACESFilmicToneMapping;
-      offR.toneMappingExposure = renderer.toneMappingExposure;
-      offR.outputColorSpace = THREE.SRGBColorSpace;
+      // Save main renderer state
+      const savedSize = { w: canvasArea.clientWidth, h: canvasArea.clientHeight };
+      const savedBg = scene.background ? scene.background.clone() : null;
+      const savedExposure = renderer.toneMappingExposure;
 
-      if (bgMode === 'transparent') { offR.setClearColor(0x000000, 0); }
-      else if (bgMode === 'color') { offR.setClearColor(new THREE.Color(document.getElementById('export-bg-color').value), 1); }
-      else { offR.setClearColor(scene.background, 1); }
+      // Set background for render
+      if (bgMode === 'transparent') {
+        scene.background = null;
+        renderer.setClearColor(0x000000, 0);
+        renderer.setPixelRatio(1);
+        renderer.setSize(W, renderH);
+      } else {
+        const bgColor = bgMode === 'color'
+          ? new THREE.Color(document.getElementById('export-bg-color').value)
+          : scene.background.clone();
+        scene.background = bgColor;
+        renderer.setPixelRatio(1);
+        renderer.setSize(W, renderH);
+      }
 
+      // Build offscreen camera
       const aspect = W / renderH;
       const bbox = new THREE.Box3().setFromObject(scene);
       const bsphere = new THREE.Sphere();
@@ -1112,19 +1160,26 @@
       const offCam = new THREE.OrthographicCamera(-r * aspect, r * aspect, r, -r, 0.001, 1000);
       offCam.position.copy(camera.position).normalize().multiplyScalar(r * 3 + 5);
       offCam.lookAt(bsphere.center);
-      offR.render(scene, offCam);
 
+      renderer.render(scene, offCam);
+
+      // Grab pixels from main renderer's canvas
       const finalCanvas = document.createElement('canvas');
       finalCanvas.width = W; finalCanvas.height = H;
       const ctx = finalCanvas.getContext('2d');
 
+      // Fill full canvas bg (for caption area)
       if (bgMode !== 'transparent') {
-        const bgColor = bgMode === 'color' ? document.getElementById('export-bg-color').value : '#' + scene.background.getHexString();
-        ctx.fillStyle = bgColor;
+        const bgHex = bgMode === 'color'
+          ? document.getElementById('export-bg-color').value
+          : '#' + (savedBg ? savedBg.getHexString() : 'e8e7e3');
+        ctx.fillStyle = bgHex;
         ctx.fillRect(0, 0, W, H);
       }
-      ctx.drawImage(offR.domElement, 0, 0, W, renderH);
 
+      ctx.drawImage(renderer.domElement, 0, 0, W, renderH);
+
+      // Draw caption
       if (hasCaption) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -1144,7 +1199,13 @@
           ctx.globalAlpha = 1;
         }
       }
-      offR.dispose();
+
+      // Restore main renderer
+      scene.background = savedBg || new THREE.Color(0xe8e7e3);
+      renderer.toneMappingExposure = savedExposure;
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(savedSize.w, savedSize.h);
+      renderer.render(scene, camera);
 
       finalCanvas.toBlob((blob) => {
         const a = document.createElement('a');
