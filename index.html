@@ -1828,9 +1828,11 @@
       function recordLoop() {
         if (!frameLoopActive) return;
         compositeFrame();
+        // Also update main viewport so user sees the rotation during recording
+        renderer.render(scene, camera);
         requestAnimationFrame(recordLoop);
       }
-      animating = false; // pause normal loop
+      animating = false; // pause normal animate loop
       requestAnimationFrame(recordLoop);
 
       // Record offCanvas stream
