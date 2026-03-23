@@ -268,24 +268,19 @@
     </div>
     <!-- Per-layer colors (shown when SVG loaded) -->
     <div id="layer-colors-wrap" class="panel-section" style="display:none">
-      <div class="section-title">Layer Colors</div>
-      <div class="slider-row" style="margin-bottom:6px">
-        <span class="slider-label">layer 1</span>
-        <input type="color" id="layer1-color" value="#1a1a1a" style="width:32px;height:22px;border:none;padding:0;cursor:pointer;background:none" />
+      <div class="section-title">Layers</div>
+      <div id="layer-list">
+        <!-- dynamically populated per SVG path -->
       </div>
-      <div class="slider-row" style="margin-bottom:12px">
-        <span class="slider-label">layer 2+</span>
-        <input type="color" id="layer2-color" value="#c8a020" style="width:32px;height:22px;border:none;padding:0;cursor:pointer;background:none" />
+      <div style="margin-top:8px">
+        <button class="btn btn-muted" id="btn-add-layer" style="width:100%;font-size:10px">+ add layer</button>
       </div>
-      <div class="slider-row">
-        <span class="slider-label">z offset</span>
-        <input type="range" id="layer2-zoffset" min="-1.0" max="2.0" step="0.02" value="0.3" />
-        <span class="slider-val" id="layer2-zoffset-val">0.30</span>
-      </div>
-      <div class="slider-row">
-        <span class="slider-label">depth ×</span>
-        <input type="range" id="layer2-depth-ratio" min="0.1" max="3.0" step="0.05" value="1.2" />
-        <span class="slider-val" id="layer2-depth-ratio-val">1.2</span>
+      <!-- Global layer controls shown below path list -->
+      <div id="layer-global-controls" style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        <div class="section-title" style="margin-bottom:8px">Layer Settings</div>
+        <div id="layer-settings-list">
+          <!-- populated dynamically -->
+        </div>
       </div>
     </div>
 
@@ -455,9 +450,16 @@
         </div>
       </div>
 
-      <div style="margin-top:12px;display:flex;gap:8px">
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn" style="flex:1;padding:7px 0;font-size:11px" id="btn-download">&#8595; png</button>
         <button class="btn" style="flex:1;padding:7px 0;font-size:11px" id="btn-download-glb">&#8595; glb</button>
+        <button class="btn" style="flex:1 0 100%;padding:7px 0;font-size:11px;margin-top:4px" id="btn-record-video">&#9654; record video</button>
+      </div>
+      <div id="record-status" style="display:none;margin-top:8px;font-size:10px;color:var(--muted);text-align:center;letter-spacing:0.08em">
+        <span id="record-status-text">recording…</span>
+        <div style="margin-top:4px;height:2px;background:var(--border);border-radius:1px">
+          <div id="record-progress" style="height:100%;background:var(--accent);width:0%;transition:width 0.3s"></div>
+        </div>
       </div>
     </div>
   </div><!-- /panel -->
@@ -535,10 +537,15 @@
     let currentBevelSize = 0.25;
     let currentBevelSegments = 8;
     let currentLayerMode = 'equal';
-    let layer1Color = '#1a1a1a';
-    let layer2Color = '#c8a020';
-    let layer2ZOffset = 0.3;
-    let layer2DepthRatio = 1.2;
+    // Multi-layer system
+    // layers[i] = { color, zOffset, depthRatio }
+    let layers = [
+      { color: '#1a1a1a', zOffset: 0,   depthRatio: 1.0 },
+      { color: '#c8a020', zOffset: 0.3, depthRatio: 1.2 },
+    ];
+    // pathLayerMap[pathIndex] = layerIndex (0-based)
+    let pathLayerMap = [];
+    let svgPathCount = 0;
     let currentMetalness = 0.9;
     let currentRoughness = 0.15;
     let currentColor = '#dcdcdc';
@@ -726,13 +733,14 @@
 
       const group = new THREE.Group();
 
-      paths.forEach((path) => {
+      paths.forEach((path, pathIdx) => {
         const shapes = SVGLoader.createShapes(path);
         if (shapes.length === 0) return;
 
-        const isBase = group.children.length === 0;
-        const color = isBase ? layer1Color : layer2Color;
-        const pathDepth = isBase ? sDepth : sDepth * layer2DepthRatio;
+        // Get layer for this path (default: path 0 → layer 0, rest → layer 1)
+        const layerIdx = (pathLayerMap[pathIdx] !== undefined) ? pathLayerMap[pathIdx] : (pathIdx === 0 ? 0 : 1);
+        const layer = layers[layerIdx] || layers[0];
+        const pathDepth = sDepth * (layer.depthRatio || 1.0);
 
         const geometry = new THREE.ExtrudeGeometry(shapes, {
           depth: pathDepth, bevelEnabled,
@@ -742,31 +750,33 @@
         });
         geometry.computeVertexNormals();
         const material = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(color),
+          color: new THREE.Color(layer.color),
           metalness: currentMetalness, roughness: currentRoughness,
           side: THREE.DoubleSide,
         });
+        material._layerIdx = layerIdx;
+        const meshObj = new THREE.Mesh(geometry, material);
+        meshObj.userData.pathIdx = pathIdx;
+        meshObj.userData.layerIdx = layerIdx;
+        group.add(meshObj);
+      });
         material._usesGlobalColor = true;
         group.add(new THREE.Mesh(geometry, material));
       });
 
       if (group.children.length === 0) return null;
 
-      // Center and uniformly scale XYZ — this brings all values back to world units
+      // Center and uniformly scale XYZ
       const bbox = new THREE.Box3().setFromObject(group);
       const center = bbox.getCenter(new THREE.Vector3());
-      group.children.forEach((child, i) => {
+      group.children.forEach((child) => {
+        const layerIdx = child.userData.layerIdx || 0;
+        const layer = layers[layerIdx] || layers[0];
         child.geometry.translate(-center.x, -center.y, 0);
-        child.geometry.scale(scale, -scale, scale); // uniform scale: XYZ all consistent
-        if (i === 0) {
-          child.position.z = 0;
-        } else {
-          child.position.z = layer2ZOffset;
-          // For negative offset (inset): reduce depth so it doesn't poke through back
-          if (layer2ZOffset < 0) {
-            // shift geometry forward so it starts at z=layer2ZOffset and ends flush with base back
-            child.geometry.translate(0, 0, -layer2ZOffset / (currentDepth * layer2DepthRatio) * 0.5);
-          }
+        child.geometry.scale(scale, -scale, scale);
+        child.position.z = layer.zOffset || 0;
+        if ((layer.zOffset || 0) < 0) {
+          child.geometry.translate(0, 0, -layer.zOffset / (currentDepth * (layer.depthRatio || 1)) * 0.5);
         }
       });
 
@@ -866,6 +876,12 @@
         btnClear.classList.remove('hidden');
         sectionShape.classList.add('hidden');
         document.getElementById('layer-colors-wrap').style.display = '';
+        // Count paths and init layer map
+        const tmpLoader = new SVGLoader();
+        const tmpData = tmpLoader.parse(currentSVGString);
+        svgPathCount = tmpData.paths.filter(p => SVGLoader.createShapes(p).length > 0).length;
+        pathLayerMap = [];
+        buildLayerUI();
         rebuildMesh();
       };
       reader.readAsText(file);
@@ -877,6 +893,7 @@
       btnClear.classList.add('hidden');
       sectionShape.classList.remove('hidden');
       document.getElementById('layer-colors-wrap').style.display = 'none';
+      svgPathCount = 0; pathLayerMap = [];
       rebuildMesh();
     });
 
@@ -910,23 +927,99 @@
       rebuildMesh();
     });
 
-    // Layer color pickers
-    document.getElementById('layer1-color').addEventListener('input', e => {
-      layer1Color = e.target.value;
-      if (mesh && mesh.isGroup) rebuildMesh();
-    });
-    bindSlider('layer2-zoffset', 'layer2-zoffset-val', v => {
-      layer2ZOffset = v;
-      if (mesh && mesh.isGroup) rebuildMesh();
-    });
-    bindSlider('layer2-depth-ratio', 'layer2-depth-ratio-val', v => {
-      layer2DepthRatio = v;
-      if (mesh && mesh.isGroup) rebuildMesh();
-    });
+    // ── Multi-layer UI ────────────────────────────────────────
+    const LAYER_COLORS_DEFAULT = ['#1a1a1a','#c8a020','#e8e0d0','#4a90d9'];
 
-    document.getElementById('layer2-color').addEventListener('input', e => {
-      layer2Color = e.target.value;
-      if (mesh && mesh.isGroup) rebuildMesh();
+    function buildLayerUI() {
+      // Path assignment list
+      const listEl = document.getElementById('layer-list');
+      listEl.innerHTML = '';
+      if (svgPathCount === 0) {
+        listEl.innerHTML = '<div style="font-size:10px;color:var(--muted)">Load an SVG to assign paths to layers.</div>';
+      } else {
+        for (let p = 0; p < svgPathCount; p++) {
+          const assigned = pathLayerMap[p] !== undefined ? pathLayerMap[p] : (p === 0 ? 0 : 1);
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
+          row.innerHTML = `
+            <span style="font-size:10px;color:var(--muted);flex:0 0 48px">path ${p + 1}</span>
+            <select data-path="${p}" style="font-family:var(--font);font-size:10px;flex:1;padding:3px 6px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+              ${layers.map((l,i) => `<option value="${i}" ${i===assigned?'selected':''}>Layer ${i+1}</option>`).join('')}
+            </select>
+            <span style="width:14px;height:14px;border-radius:50%;background:${layers[assigned].color};display:inline-block;border:1px solid var(--border);flex-shrink:0" data-swatch="${p}"></span>
+          `;
+          row.querySelector('select').addEventListener('change', (e) => {
+            pathLayerMap[parseInt(e.target.dataset.path)] = parseInt(e.target.value);
+            row.querySelector(`[data-swatch]`).style.background = layers[parseInt(e.target.value)].color;
+            rebuildMesh();
+          });
+          listEl.appendChild(row);
+        }
+      }
+
+      // Layer settings list
+      const settingsEl = document.getElementById('layer-settings-list');
+      settingsEl.innerHTML = '';
+      layers.forEach((layer, i) => {
+        const block = document.createElement('div');
+        block.style.cssText = 'margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)';
+        block.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-size:10px;font-weight:bold;letter-spacing:0.08em;color:var(--text);flex:1">Layer ${i+1}</span>
+            <input type="color" value="${layer.color}" data-layer="${i}" data-prop="color"
+              style="width:28px;height:20px;border:none;padding:0;cursor:pointer;background:none" />
+            ${i >= 2 ? `<button data-remove="${i}" style="font-family:var(--font);font-size:10px;border:none;background:none;color:var(--muted);cursor:pointer">✕</button>` : ''}
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">z offset</span>
+            <input type="range" min="-1.0" max="2.0" step="0.02" value="${layer.zOffset}" data-layer="${i}" data-prop="zOffset" />
+            <span class="slider-val" data-zval="${i}">${layer.zOffset.toFixed(2)}</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">depth ×</span>
+            <input type="range" min="0.1" max="3.0" step="0.05" value="${layer.depthRatio}" data-layer="${i}" data-prop="depthRatio" />
+            <span class="slider-val" data-drval="${i}">${layer.depthRatio.toFixed(2)}</span>
+          </div>
+        `;
+        block.querySelector(`[data-prop="color"]`).addEventListener('input', (e) => {
+          layers[parseInt(e.target.dataset.layer)].color = e.target.value;
+          // update swatches in path list
+          document.querySelectorAll(`[data-swatch]`).forEach(sw => {
+            const pIdx = parseInt(sw.dataset.swatch);
+            const lIdx = pathLayerMap[pIdx] !== undefined ? pathLayerMap[pIdx] : (pIdx === 0 ? 0 : 1);
+            sw.style.background = layers[lIdx]?.color || '#ccc';
+          });
+          rebuildMesh();
+        });
+        block.querySelector(`[data-prop="zOffset"]`).addEventListener('input', (e) => {
+          const li = parseInt(e.target.dataset.layer);
+          layers[li].zOffset = parseFloat(e.target.value);
+          block.querySelector(`[data-zval="${li}"]`).textContent = layers[li].zOffset.toFixed(2);
+          rebuildMesh();
+        });
+        block.querySelector(`[data-prop="depthRatio"]`).addEventListener('input', (e) => {
+          const li = parseInt(e.target.dataset.layer);
+          layers[li].depthRatio = parseFloat(e.target.value);
+          block.querySelector(`[data-drval="${li}"]`).textContent = layers[li].depthRatio.toFixed(2);
+          rebuildMesh();
+        });
+        const removeBtn = block.querySelector('[data-remove]');
+        if (removeBtn) removeBtn.addEventListener('click', (e) => {
+          const li = parseInt(e.target.dataset.remove);
+          layers.splice(li, 1);
+          // remap paths that referenced removed layer
+          pathLayerMap = pathLayerMap.map(l => l >= li ? Math.max(0, l-1) : l);
+          buildLayerUI();
+          rebuildMesh();
+        });
+        settingsEl.appendChild(block);
+      });
+    }
+
+    document.getElementById('btn-add-layer').addEventListener('click', () => {
+      if (layers.length >= 6) return;
+      layers.push({ color: LAYER_COLORS_DEFAULT[layers.length] || '#888', zOffset: layers.length * 0.3, depthRatio: 1.0 });
+      buildLayerUI();
     });
 
     bevelTypeSelect.addEventListener('change', () => {
@@ -1335,6 +1428,8 @@
 
     // GLB download — show coffee modal first, skip/close triggers actual download
     let pendingGlbDownload = false;
+    let pendingVideoRecord = false;
+
     function doGlbDownload() {
       const exporter = new GLTFExporter();
       const mesh = scene.children.find(c => c.isGroup || c.isMesh);
@@ -1348,17 +1443,104 @@
         URL.revokeObjectURL(a.href);
       }, (err) => { console.error('GLTFExporter error', err); }, { binary: true });
     }
-    document.getElementById('btn-download-glb').addEventListener('click', () => {
-      pendingGlbDownload = true;
+
+    // ── Video recording ──────────────────────────────────────
+    let mediaRecorder = null;
+    let recordChunks = [];
+    const RECORD_DURATION = 20000; // 20s = 1 full rotation
+
+    function doStartRecording() {
+      if (mediaRecorder) return;
+      const statusWrap = document.getElementById('record-status');
+      const statusText = document.getElementById('record-status-text');
+      const progress = document.getElementById('record-progress');
+      const btn = document.getElementById('btn-record-video');
+
+      // Apply export bg to scene for recording
+      const savedBg = scene.background ? scene.background.clone() : null;
+      const bgMode = document.getElementById('export-bg').value;
+      if (bgMode === 'color') scene.background = new THREE.Color(document.getElementById('export-bg-color').value);
+      else if (bgMode === 'gradient') { const {tex} = makeGradientTexture(512,512); if(gradTex) gradTex.dispose(); gradTex=tex; scene.background = tex; }
+      else if (bgMode === 'transparent') scene.background = new THREE.Color(0xe8e7e3); // webm needs bg
+
+      // Save mesh rotation
+      const savedRotY = mesh ? mesh.rotation.y : 0;
+
+      // Enable auto-rotate for recording
+      const wasRotating = autoRotate;
+      autoRotate = true;
+      controls.enabled = false;
+
+      // Start capture
+      const stream = renderer.domElement.captureStream(60);
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9' : 'video/webm';
+      mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+      recordChunks = [];
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordChunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordChunks, { type: mimeType });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'badge-rotate.webm';
+        a.click();
+        URL.revokeObjectURL(a.href);
+
+        // Restore
+        scene.background = savedBg || new THREE.Color(0xe8e7e3);
+        autoRotate = wasRotating;
+        controls.enabled = !wasRotating;
+        document.getElementById('auto-rotate-toggle').checked = wasRotating;
+        statusWrap.style.display = 'none';
+        btn.textContent = '▶ record video';
+        btn.disabled = false;
+        mediaRecorder = null;
+      };
+
+      mediaRecorder.start();
+      statusWrap.style.display = 'block';
+      statusText.textContent = 'recording…';
+      btn.textContent = '⏹ stop';
+      btn.disabled = false;
+
+      // Progress bar + auto-stop
+      const start = performance.now();
+      const tick = () => {
+        if (!mediaRecorder) return;
+        const elapsed = performance.now() - start;
+        const pct = Math.min(elapsed / RECORD_DURATION * 100, 100);
+        progress.style.width = pct + '%';
+        if (elapsed >= RECORD_DURATION) {
+          mediaRecorder.stop();
+        } else {
+          requestAnimationFrame(tick);
+        }
+      };
+      requestAnimationFrame(tick);
+    }
+
+    document.getElementById('btn-record-video').addEventListener('click', () => {
+      if (mediaRecorder) {
+        // Stop early
+        mediaRecorder.stop();
+        return;
+      }
+      if (!mesh) { alert('No model loaded.'); return; }
+      pendingVideoRecord = true;
       openModal('coffee-modal');
     });
+    function firePendingAction() {
+      if (pendingGlbDownload) { pendingGlbDownload = false; doGlbDownload(); }
+      else if (pendingVideoRecord) { pendingVideoRecord = false; doStartRecording(); }
+    }
     document.getElementById('btn-coffee-skip').addEventListener('click', () => {
       closeModal('coffee-modal');
-      if (pendingGlbDownload) { pendingGlbDownload = false; doGlbDownload(); }
+      firePendingAction();
     });
 
     document.getElementById('btn-coffee').addEventListener('click', () => {
-      pendingGlbDownload = false; // normal coffee button, no pending download
+      pendingGlbDownload = false;
+      pendingVideoRecord = false;
       openModal('coffee-modal');
     });
     document.getElementById('btn-help').addEventListener('click', () => openModal('help-modal'));
@@ -1367,21 +1549,14 @@
     document.querySelectorAll('.modal-close').forEach(btn => {
       btn.addEventListener('click', () => {
         closeModal(btn.dataset.modal);
-        // If closing coffee modal with X and there's a pending GLB download, trigger it
-        if (btn.dataset.modal === 'coffee-modal' && pendingGlbDownload) {
-          pendingGlbDownload = false;
-          doGlbDownload();
-        }
+        if (btn.dataset.modal === 'coffee-modal') firePendingAction();
       });
     });
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
           overlay.classList.remove('open');
-          if (overlay.id === 'coffee-modal' && pendingGlbDownload) {
-            pendingGlbDownload = false;
-            doGlbDownload();
-          }
+          if (overlay.id === 'coffee-modal') firePendingAction();
         }
       });
     });
@@ -1389,10 +1564,7 @@
       if (e.key === 'Escape') {
         const wasCoffeeOpen = document.getElementById('coffee-modal').classList.contains('open');
         document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
-        if (wasCoffeeOpen && pendingGlbDownload) {
-          pendingGlbDownload = false;
-          doGlbDownload();
-        }
+        if (wasCoffeeOpen) firePendingAction();
       }
     });
 
