@@ -258,9 +258,7 @@
         <label class="section-label">environment</label>
         <select id="env-select">
           <option value="none">None</option>
-          <option value="studio" selected>Studio</option>
-          <option value="city">City</option>
-          <option value="sunset">Sunset</option>
+          <option value="studio">Studio</option>
         </select>
       </div>
     </div>
@@ -313,7 +311,7 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
-    import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
     let currentSVGString = null;
@@ -354,29 +352,9 @@
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     pmremGenerator.compileEquirectangularShader();
-    const environments = { none: null, studio: null, city: null, sunset: null };
-
-    // Load bundled studio HDR
-    const rgbeLoader = new RGBELoader();
-    rgbeLoader.load('studio.hdr', tex => {
-      environments.studio = pmremGenerator.fromEquirectangular(tex).texture;
-      tex.dispose();
-      setEnvironment('studio');
-    });
-    rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/city_1k.hdr', tex => {
-      environments.city = pmremGenerator.fromEquirectangular(tex).texture;
-      tex.dispose();
-    });
-    rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/golden_bay_1k.hdr', tex => {
-      environments.sunset = pmremGenerator.fromEquirectangular(tex).texture;
-      tex.dispose();
-    });
-
-    function setEnvironment(key) {
-      scene.environment = environments[key] || null;
-      renderer.toneMappingExposure = key === 'none' ? 1.0 : 1.2;
-    }
-    document.getElementById('environment').value = 'studio';
+    const studioEnvTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    const environments = { none: null, studio: studioEnvTexture };
+    function setEnvironment(key) { scene.environment = environments[key] || null; }
 
     const orthoSize = 2.5;
     const aspect = canvasArea.clientWidth / canvasArea.clientHeight;
@@ -478,15 +456,10 @@
           depth: pathDepth, bevelEnabled,
           bevelThickness: currentBevelThickness, bevelSize: currentBevelSize,
           bevelSegments: currentBevelSegments,
-          curveSegments: 32,
         });
-        // Smooth side normals (only for round bevel)
-        if (currentBevelSegments > 1) {
-          try {
-            geometry = mergeVertices(geometry, 0.001);
-            geometry.computeVertexNormals();
-          } catch(e) { console.warn('mergeVertices failed', e); }
-        }
+        // Smooth side normals
+        geometry = mergeVertices(geometry);
+        geometry.computeVertexNormals();
         const material = new THREE.MeshStandardMaterial({
           color: new THREE.Color(color),
           metalness: currentMetalness, roughness: currentRoughness,
