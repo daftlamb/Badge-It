@@ -456,9 +456,10 @@
           depth: pathDepth, bevelEnabled,
           bevelThickness: currentBevelThickness, bevelSize: currentBevelSize,
           bevelSegments: currentBevelSegments,
+          curveSegments: 64,
         });
         // Smooth side normals
-        geometry = mergeVertices(geometry);
+        geometry = mergeVertices(geometry, 0.001);
         geometry.computeVertexNormals();
         const material = new THREE.MeshStandardMaterial({
           color: new THREE.Color(color),
