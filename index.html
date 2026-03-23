@@ -778,9 +778,6 @@
         meshObj.userData.layerIdx = layerIdx;
         group.add(meshObj);
       });
-        material._usesGlobalColor = true;
-        group.add(new THREE.Mesh(geometry, material));
-      });
 
       if (group.children.length === 0) return null;
 
