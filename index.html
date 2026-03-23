@@ -520,6 +520,24 @@
     </div>
   </div>
 
+  <!-- Video preview modal -->
+  <div class="modal-overlay" id="video-preview-modal">
+    <div class="modal-box" style="max-width:520px;text-align:center">
+      <button class="modal-close" data-modal="video-preview-modal">&#10005;</button>
+      <h3 style="margin-bottom:12px">Video Preview / 视频预览</h3>
+      <video id="video-preview-player" autoplay loop muted playsinline
+        style="width:100%;max-height:60vh;background:#000;display:block;margin:0 auto 12px"></video>
+      <p style="font-size:10px;color:var(--muted);margin-bottom:14px">
+        如果觉得不错，请扫码支持一下，然后下载 ☕<br>
+        Like it? Support the author, then download.
+      </p>
+      <div style="display:flex;gap:8px">
+        <button class="btn" style="flex:1;padding:8px 0;font-size:11px" id="btn-video-download-now">&#8595; download · 下载</button>
+        <button class="btn" style="flex:1;padding:8px 0;font-size:11px;border-color:var(--border);color:var(--muted)" id="btn-video-support">☕ support first</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1480,13 +1498,40 @@
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordChunks.push(e.data); };
       mediaRecorder.onstop = () => {
         const blob = new Blob(recordChunks, { type: mimeType });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'badge-rotate.webm';
-        a.click();
-        URL.revokeObjectURL(a.href);
+        const videoUrl = URL.createObjectURL(blob);
 
-        // Restore
+        // Show preview modal first — download only after user sees it
+        const player = document.getElementById('video-preview-player');
+        player.src = videoUrl;
+        player.play();
+        openModal('video-preview-modal');
+
+        // Download button
+        const dlBtn = document.getElementById('btn-video-download-now');
+        const dlHandler = () => {
+          const a = document.createElement('a');
+          a.href = videoUrl;
+          a.download = 'badge-rotate.webm';
+          a.click();
+          closeModal('video-preview-modal');
+          URL.revokeObjectURL(videoUrl);
+          dlBtn.removeEventListener('click', dlHandler);
+        };
+        dlBtn.addEventListener('click', dlHandler);
+
+        // Support button → open coffee modal, then come back
+        document.getElementById('btn-video-support').onclick = () => {
+          closeModal('video-preview-modal');
+          pendingGlbDownload = false;
+          openModal('coffee-modal');
+          // After coffee modal closes, re-open video preview
+          const onCoffeeClose = () => {
+            openModal('video-preview-modal');
+            document.getElementById('coffee-modal').removeEventListener('modalclose', onCoffeeClose);
+          };
+        };
+
+        // Restore scene state
         scene.background = savedBg || new THREE.Color(0xe8e7e3);
         autoRotate = wasRotating;
         controls.enabled = !wasRotating;
@@ -1521,13 +1566,11 @@
 
     document.getElementById('btn-record-video').addEventListener('click', () => {
       if (mediaRecorder) {
-        // Stop early
         mediaRecorder.stop();
         return;
       }
       if (!mesh) { alert('No model loaded.'); return; }
-      pendingVideoRecord = true;
-      openModal('coffee-modal');
+      doStartRecording();
     });
     function firePendingAction() {
       if (pendingGlbDownload) { pendingGlbDownload = false; doGlbDownload(); }
