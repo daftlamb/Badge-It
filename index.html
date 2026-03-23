@@ -1123,49 +1123,51 @@
       captionLineCopy.style.lineHeight = '1.6';
     }
 
-    // Offscreen PNG render (full res) — reuse main renderer context
+    // Offscreen PNG render — reuse main renderer, temp resize
     function doCanvasExport() {
+      if (!mesh) { alert('No model loaded.'); return; }
+
       const p = getExportParams();
-      const { W, H, bgMode, padding, captionName, captionCopy, captionSize, captionColor, hasCaption, lineH, captionH, renderH } = p;
+      const { W, H, bgMode, padding, captionName, captionCopy, captionSize, captionColor, hasCaption, lineH, captionH } = p;
+      const renderH = Math.max(H - captionH, 1);
 
-      // Save main renderer state
-      const savedSize = { w: canvasArea.clientWidth, h: canvasArea.clientHeight };
+      // Save state
+      const savedW = canvasArea.clientWidth, savedH = canvasArea.clientHeight;
       const savedBg = scene.background ? scene.background.clone() : null;
-      const savedExposure = renderer.toneMappingExposure;
 
-      // Set background for render
-      if (bgMode === 'transparent') {
+      // Set bg for render
+      if (bgMode === 'color') {
+        scene.background = new THREE.Color(document.getElementById('export-bg-color').value);
+      } else if (bgMode === 'transparent') {
         scene.background = null;
-        renderer.setClearColor(0x000000, 0);
-        renderer.setPixelRatio(1);
-        renderer.setSize(W, renderH);
-      } else {
-        const bgColor = bgMode === 'color'
-          ? new THREE.Color(document.getElementById('export-bg-color').value)
-          : scene.background.clone();
-        scene.background = bgColor;
-        renderer.setPixelRatio(1);
-        renderer.setSize(W, renderH);
       }
+      // 'scene' mode: keep as-is
 
-      // Build offscreen camera
-      const aspect = W / renderH;
-      const bbox = new THREE.Box3().setFromObject(scene);
+      // Build camera from mesh bounds only
+      const bbox = new THREE.Box3().setFromObject(mesh);
       const bsphere = new THREE.Sphere();
       bbox.getBoundingSphere(bsphere);
+      const aspect = W / renderH;
       const r = bsphere.radius * (1 + padding);
       const offCam = new THREE.OrthographicCamera(-r * aspect, r * aspect, r, -r, 0.001, 1000);
-      offCam.position.copy(camera.position).normalize().multiplyScalar(r * 3 + 5);
+      // Use same view direction as main camera
+      const camDir = camera.position.clone().normalize();
+      offCam.position.copy(bsphere.center).addScaledVector(camDir, r * 4 + 2);
       offCam.lookAt(bsphere.center);
+      offCam.updateProjectionMatrix();
 
+      // Resize renderer → render → grab pixels
+      renderer.setPixelRatio(1);
+      renderer.setSize(W, renderH);
       renderer.render(scene, offCam);
 
-      // Grab pixels from main renderer's canvas
+      // Compose on 2D canvas
       const finalCanvas = document.createElement('canvas');
-      finalCanvas.width = W; finalCanvas.height = H;
+      finalCanvas.width = W;
+      finalCanvas.height = H;
       const ctx = finalCanvas.getContext('2d');
 
-      // Fill full canvas bg (for caption area)
+      // Background fill for caption strip
       if (bgMode !== 'transparent') {
         const bgHex = bgMode === 'color'
           ? document.getElementById('export-bg-color').value
@@ -1174,6 +1176,7 @@
         ctx.fillRect(0, 0, W, H);
       }
 
+      // Draw 3D render
       ctx.drawImage(renderer.domElement, 0, 0, W, renderH);
 
       // Draw caption
@@ -1197,13 +1200,13 @@
         }
       }
 
-      // Restore main renderer
+      // Restore
       scene.background = savedBg || new THREE.Color(0xe8e7e3);
-      renderer.toneMappingExposure = savedExposure;
       renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(savedSize.w, savedSize.h);
+      renderer.setSize(savedW, savedH);
       renderer.render(scene, camera);
 
+      // Download
       finalCanvas.toBlob((blob) => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
