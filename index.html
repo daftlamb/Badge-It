@@ -188,13 +188,13 @@
       </div>
       <div class="slider-row" style="margin-top:8px">
         <span class="slider-label">z offset</span>
-        <input type="range" id="layer2-zoffset" min="-0.5" max="0.5" step="0.01" value="0.05" />
-        <span class="slider-val" id="layer2-zoffset-val">0.05</span>
+        <input type="range" id="layer2-zoffset" min="-1.0" max="1.0" step="0.02" value="0.15" />
+        <span class="slider-val" id="layer2-zoffset-val">0.15</span>
       </div>
       <div class="slider-row">
         <span class="slider-label">depth ×</span>
-        <input type="range" id="layer2-depth-ratio" min="0.1" max="2.0" step="0.05" value="0.5" />
-        <span class="slider-val" id="layer2-depth-ratio-val">0.5</span>
+        <input type="range" id="layer2-depth-ratio" min="0.1" max="2.0" step="0.05" value="0.8" />
+        <span class="slider-val" id="layer2-depth-ratio-val">0.8</span>
       </div>
     </div>
 
@@ -313,7 +313,7 @@
     import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-    import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+    // mergeVertices removed – using computeVertexNormals() directly
 
     let currentSVGString = null;
     let currentShape = 'circle';
@@ -325,8 +325,8 @@
     let currentLayerMode = 'equal';
     let layer1Color = '#1a1a1a';
     let layer2Color = '#c8a020';
-    let layer2ZOffset = 0.05;
-    let layer2DepthRatio = 0.5;
+    let layer2ZOffset = 0.15;
+    let layer2DepthRatio = 0.8;
     let currentMetalness = 0.9;
     let currentRoughness = 0.15;
     let currentColor = '#c8c8c8';
@@ -345,7 +345,8 @@
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(canvasArea.clientWidth, canvasArea.clientHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMappingExposure = 1.2;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     canvasArea.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
@@ -360,15 +361,17 @@
       renderer.toneMappingExposure = key === 'none' ? 1.0 : 1.2;
     }
     setEnvironment('studio');
-    // Try to load bundled HDR for better quality
-    try {
-      new RGBELoader().load('studio.hdr', function(tex) {
+    // Load HDR from Three.js official CDN for reliable CORS-friendly access
+    new RGBELoader()
+      .setPath('https://threejs.org/examples/textures/equirectangular/')
+      .load('royal_esplanade_1k.hdr', function(tex) {
         environments.studio = pmremGenerator.fromEquirectangular(tex).texture;
         tex.dispose();
-        const envSel = document.getElementById('environment');
+        const envSel = document.getElementById('env-select');
         if (envSel && envSel.value === 'studio') setEnvironment('studio');
+      }, undefined, function(err) {
+        console.warn('HDR load failed, using RoomEnvironment fallback', err);
       });
-    } catch(e) { console.warn('HDR load failed, using RoomEnvironment'); }
 
     const orthoSize = 2.5;
     const aspect = canvasArea.clientWidth / canvasArea.clientHeight;
@@ -470,9 +473,9 @@
           depth: pathDepth, bevelEnabled,
           bevelThickness: currentBevelThickness, bevelSize: currentBevelSize,
           bevelSegments: currentBevelSegments,
+          curveSegments: 64,
         });
-        // Smooth side normals
-        geometry = mergeVertices(geometry);
+        // Smooth side normals without mergeVertices (avoids crashes)
         geometry.computeVertexNormals();
         const material = new THREE.MeshStandardMaterial({
           color: new THREE.Color(color),
@@ -494,7 +497,12 @@
       group.children.forEach((child, i) => {
         child.geometry.translate(-center.x, -center.y, 0);
         child.geometry.scale(scale, -scale, 1);
-        child.position.z = i === 0 ? 0 : layer2ZOffset;
+        if (i === 0) {
+          child.position.z = 0;
+        } else {
+          // When offset is negative, simulate inset by sinking layer into base
+          child.position.z = layer2ZOffset;
+        }
       });
 
       const bbox2 = new THREE.Box3().setFromObject(group);
