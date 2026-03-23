@@ -1732,32 +1732,39 @@
       // Apply bg to scene
       const savedBg = scene.background ? scene.background.clone() : null;
       if (bgMode === 'color') scene.background = new THREE.Color(document.getElementById('export-bg-color').value);
-      else if (bgMode === 'gradient') { scene.background = null; } // gradient drawn on offCanvas directly
+      else if (bgMode === 'gradient') scene.background = null;
       else if (bgMode === 'transparent') scene.background = new THREE.Color(0xe8e7e3);
+
+      // Create dedicated off-screen renderer (exact pixel size, no CSS distortion)
+      const recRenderer = new THREE.WebGLRenderer({
+        antialias: true, alpha: true,
+        preserveDrawingBuffer: false,
+        logarithmicDepthBuffer: true,
+      });
+      recRenderer.setPixelRatio(1);
+      recRenderer.setSize(W, renderH, false); // false = don't set CSS size
+      recRenderer.shadowMap.enabled = false;
+      // Copy environment
+      recRenderer.toneMapping = renderer.toneMapping;
+      recRenderer.toneMappingExposure = renderer.toneMappingExposure;
+      recRenderer.outputColorSpace = renderer.outputColorSpace;
 
       // Build offscreen composite canvas (this is what we record)
       const offCanvas = document.createElement('canvas');
       offCanvas.width = W; offCanvas.height = H;
       const offCtx = offCanvas.getContext('2d');
 
-      // Build offscreen camera (same as PNG export)
+      // Build recording camera
       const aspect = W / renderH;
       const bbox = new THREE.Box3().setFromObject(mesh);
       const bsphere = new THREE.Sphere();
       bbox.getBoundingSphere(bsphere);
       const r = bsphere.radius * (1 + padding);
-      // Correct ortho frustum: vertical = r, horizontal = r * aspect
       const recCam = new THREE.OrthographicCamera(-r*aspect, r*aspect, r, -r, 0.001, 1000);
-      // Use current camera direction for initial angle
       const camDirNorm = camera.position.clone().sub(controls.target).normalize();
       recCam.position.copy(bsphere.center).addScaledVector(camDirNorm, r*4+2);
       recCam.lookAt(bsphere.center);
       recCam.updateProjectionMatrix();
-
-      // Resize main renderer to export size
-      const savedW = canvasArea.clientWidth, savedH = canvasArea.clientHeight;
-      renderer.setPixelRatio(1);
-      renderer.setSize(W, renderH);
 
       // Enable auto-rotate
       const wasRotating = autoRotate;
@@ -1784,12 +1791,8 @@
       // Per-frame composite: render → copy to offCanvas → draw caption
       function compositeFrame() {
         updateRecCam();
-        // For gradient: render transparent scene onto gradient background
-        if (bgMode === 'gradient') {
-          renderer.setClearColor(0x000000, 0);
-          renderer.clearColor();
-        }
-        renderer.render(scene, recCam);
+        if (bgMode === 'gradient') recRenderer.setClearColor(0x000000, 0);
+        recRenderer.render(scene, recCam);
 
         // 1. Fill background first (full canvas incl. caption area)
         if (bgMode === 'gradient') {
@@ -1801,8 +1804,8 @@
           offCtx.fillStyle = bgHex;
           offCtx.fillRect(0, 0, W, H);
         }
-        // 2. Composite 3D render on top
-        offCtx.drawImage(renderer.domElement, 0, 0, W, renderH);
+        // 2. Composite 3D render on top (recRenderer canvas is exactly W×renderH)
+        offCtx.drawImage(recRenderer.domElement, 0, 0, W, renderH);
 
         if (hasCaption) {
           offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle';
@@ -1864,11 +1867,9 @@
           openModal('coffee-modal');
         };
 
-        // Restore renderer & scene
-        renderer.setClearColor(0x000000, 1); // restore opaque clear
+        // Restore scene & dispose recRenderer
+        recRenderer.dispose();
         scene.background = savedBg || new THREE.Color(0xe8e7e3);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(savedW, savedH);
         autoRotate = wasRotating;
         controls.enabled = true;
         document.getElementById('auto-rotate-toggle').checked = wasRotating;
