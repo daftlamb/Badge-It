@@ -488,8 +488,6 @@
     let currentMetalness = 0.9;
     let currentRoughness = 0.15;
     let currentColor = '#c8c8c8';
-    let autoRotate = true;
-    let interactionTimer = null;
 
     const MATERIAL_PRESETS = {
       metal:   { metalness: 0.9,  roughness: 0.15 },
@@ -658,21 +656,16 @@
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
-      if (autoRotate && mesh) {
-        mesh.rotation.y += 0.005;
-      }
       renderer.render(scene, camera);
     }
     animate();
 
     // Pause auto-rotate on interaction
     controls.addEventListener('start', () => {
-      autoRotate = false;
-      clearTimeout(interactionTimer);
+
     });
     controls.addEventListener('end', () => {
-      clearTimeout(interactionTimer);
-      interactionTimer = setTimeout(() => { autoRotate = true; }, 3000);
+
     });
 
     // ── Resize ──
