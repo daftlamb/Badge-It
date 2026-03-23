@@ -114,44 +114,32 @@
       display: none;
     }
     #canvas-frame.active { display: block; }
-
-    /* Canvas preview thumbnail */
-    #export-preview-wrap {
+    /* Caption overlay inside the frame */
+    #caption-overlay {
       position: absolute;
-      bottom: 16px; right: 16px;
-      z-index: 50;
-      cursor: pointer;
-      transition: transform 0.15s;
-    }
-    #export-preview-wrap:hover { transform: scale(1.04); }
-    #export-preview-canvas {
-      display: block;
-      width: 120px; height: auto;
-      border: 1px solid rgba(255,255,255,0.3);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      background: #ccc;
-    }
-    #export-preview-label {
-      text-align: center;
-      font-size: 9px;
-      letter-spacing: 0.08em;
-      color: rgba(255,255,255,0.6);
-      margin-top: 4px;
-      font-family: var(--font);
-    }
-    /* Lightbox */
-    #preview-lightbox {
       display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.8);
-      z-index: 2000;
-      align-items: center; justify-content: center;
-      cursor: zoom-out;
+      pointer-events: none;
+      z-index: 12;
+      text-align: center;
+      width: 0; /* set via JS */
     }
-    #preview-lightbox.open { display: flex; }
-    #preview-lightbox img {
-      max-width: 90vw; max-height: 90vh;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    #caption-overlay.active { display: block; }
+    #caption-line-name {
+      font-family: 'Outfit', 'Courier New', monospace;
+      font-weight: 400;
+      color: #999;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #caption-line-copy {
+      font-family: 'Outfit', 'Courier New', monospace;
+      font-weight: 300;
+      color: #999;
+      opacity: 0.65;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* ── Mobile ── */
@@ -442,15 +430,11 @@
   <div id="canvas-area">
     <!-- Canvas crop frame overlay -->
     <div id="canvas-frame"></div>
-    <div id="export-preview-wrap" title="preview export · click to enlarge">
-      <canvas id="export-preview-canvas" width="240" height="240"></canvas>
-      <div id="export-preview-label">export preview</div>
+    <!-- Caption preview overlay (inside frame) -->
+    <div id="caption-overlay">
+      <div id="caption-line-name"></div>
+      <div id="caption-line-copy"></div>
     </div>
-  </div>
-
-  <!-- Preview lightbox -->
-  <div id="preview-lightbox">
-    <img id="preview-lightbox-img" src="" alt="export preview" />
   </div>
 
   <div class="modal-overlay" id="coffee-modal">
@@ -980,6 +964,7 @@
     function updateCanvasFrame() {
       if (!canvasPreviewActive) {
         canvasFrame.classList.remove('active');
+        captionOverlay.classList.remove('active');
         return;
       }
       canvasFrame.classList.add('active');
@@ -987,7 +972,6 @@
       const area = canvasArea;
       const aW = area.clientWidth, aH = area.clientHeight;
       const aspect = p.W / p.H;
-      // fit canvas frame inside viewport, centered
       let fw, fh;
       if (aW / aH > aspect) {
         fh = Math.round(aH * 0.85);
@@ -1002,6 +986,7 @@
       canvasFrame.style.top = fy + 'px';
       canvasFrame.style.width = fw + 'px';
       canvasFrame.style.height = fh + 'px';
+      updateCaptionOverlay();
     }
 
     document.getElementById('canvas-preview-toggle').addEventListener('change', (e) => {
@@ -1034,13 +1019,11 @@
     document.getElementById('custom-w').addEventListener('input', () => { schedulePreview(); updateCanvasFrame(); });
     document.getElementById('custom-h').addEventListener('input', () => { schedulePreview(); updateCanvasFrame(); });
 
-    // Preview thumbnail
-    const previewCanvas = document.getElementById('export-preview-canvas');
-    const previewCtx = previewCanvas.getContext('2d');
+    // Preview: DOM caption overlay inside frame
     let previewTimer = null;
     function schedulePreview() {
       clearTimeout(previewTimer);
-      previewTimer = setTimeout(updatePreview, 300);
+      previewTimer = setTimeout(updateCaptionOverlay, 150);
     }
 
     function getExportParams() {
@@ -1064,8 +1047,51 @@
       return { W, H, bgMode, padding, captionName, captionCopy, captionSize, captionColor, hasCaption, lineH, captionH, renderH };
     }
 
-    function renderToCanvas(destCanvas, destCtx, W, H, params) {
-      const { bgMode, padding, captionName, captionCopy, captionSize, captionColor, hasCaption, lineH, captionH, renderH } = params;
+    // Update DOM caption inside the canvas frame
+    const captionOverlay = document.getElementById('caption-overlay');
+    const captionLineName = document.getElementById('caption-line-name');
+    const captionLineCopy = document.getElementById('caption-line-copy');
+
+    function updateCaptionOverlay() {
+      if (!canvasPreviewActive) return;
+      const p = getExportParams();
+      const frame = canvasFrame;
+      const fw = frame.offsetWidth;
+      const fh = frame.offsetHeight;
+      const fl = parseInt(frame.style.left) || 0;
+      const ft = parseInt(frame.style.top) || 0;
+
+      const scale = fw / p.W; // px per export-px
+      const hasCaption = p.hasCaption;
+
+      captionOverlay.classList.toggle('active', hasCaption);
+      if (!hasCaption) return;
+
+      const captionHpx = Math.round(p.captionH * scale);
+      const namePx = Math.round(p.captionSize * scale);
+      const copyPx = Math.round(p.captionSize * 0.75 * scale);
+
+      captionOverlay.style.left = fl + 'px';
+      captionOverlay.style.top = (ft + fh - captionHpx) + 'px';
+      captionOverlay.style.width = fw + 'px';
+
+      captionLineName.textContent = p.captionName;
+      captionLineName.style.display = p.captionName ? 'block' : 'none';
+      captionLineName.style.fontSize = namePx + 'px';
+      captionLineName.style.color = p.captionColor;
+      captionLineName.style.lineHeight = '1.6';
+
+      captionLineCopy.textContent = p.captionCopy;
+      captionLineCopy.style.display = p.captionCopy ? 'block' : 'none';
+      captionLineCopy.style.fontSize = copyPx + 'px';
+      captionLineCopy.style.color = p.captionColor;
+      captionLineCopy.style.lineHeight = '1.6';
+    }
+
+    // Offscreen PNG render (full res)
+    function doCanvasExport() {
+      const p = getExportParams();
+      const { W, H, bgMode, padding, captionName, captionCopy, captionSize, captionColor, hasCaption, lineH, captionH, renderH } = p;
 
       const offR = new THREE.WebGLRenderer({ antialias: true, alpha: bgMode === 'transparent', preserveDrawingBuffer: true, logarithmicDepthBuffer: true });
       offR.setPixelRatio(1);
@@ -1088,81 +1114,38 @@
       offCam.lookAt(bsphere.center);
       offR.render(scene, offCam);
 
-      destCanvas.width = W;
-      destCanvas.height = H;
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = W; finalCanvas.height = H;
+      const ctx = finalCanvas.getContext('2d');
 
       if (bgMode !== 'transparent') {
         const bgColor = bgMode === 'color' ? document.getElementById('export-bg-color').value : '#' + scene.background.getHexString();
-        destCtx.fillStyle = bgColor;
-        destCtx.fillRect(0, 0, W, H);
-      } else {
-        // checkerboard for transparent preview
-        const sz = Math.max(8, Math.round(W / 40));
-        for (let y = 0; y < H; y += sz) {
-          for (let x = 0; x < W; x += sz) {
-            destCtx.fillStyle = ((x / sz + y / sz) % 2 === 0) ? '#ccc' : '#fff';
-            destCtx.fillRect(x, y, sz, sz);
-          }
-        }
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, W, H);
       }
-
-      destCtx.drawImage(offR.domElement, 0, 0, W, renderH);
+      ctx.drawImage(offR.domElement, 0, 0, W, renderH);
 
       if (hasCaption) {
-        destCtx.textAlign = 'center';
-        destCtx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         let y = renderH + captionSize * 0.6;
         if (captionName) {
-          destCtx.font = `400 ${captionSize}px 'Outfit', 'Courier New', monospace`;
-          destCtx.fillStyle = captionColor;
-          destCtx.globalAlpha = 1;
-          destCtx.fillText(captionName, W / 2, y);
+          ctx.font = `400 ${captionSize}px 'Outfit', 'Courier New', monospace`;
+          ctx.fillStyle = captionColor;
+          ctx.globalAlpha = 1;
+          ctx.fillText(captionName, W / 2, y);
           y += lineH;
         }
         if (captionCopy) {
-          destCtx.font = `300 ${Math.round(captionSize * 0.75)}px 'Outfit', 'Courier New', monospace`;
-          destCtx.fillStyle = captionColor;
-          destCtx.globalAlpha = 0.65;
-          destCtx.fillText(captionCopy, W / 2, y);
-          destCtx.globalAlpha = 1;
+          ctx.font = `300 ${Math.round(captionSize * 0.75)}px 'Outfit', 'Courier New', monospace`;
+          ctx.fillStyle = captionColor;
+          ctx.globalAlpha = 0.65;
+          ctx.fillText(captionCopy, W / 2, y);
+          ctx.globalAlpha = 1;
         }
       }
-
       offR.dispose();
-    }
 
-    function updatePreview() {
-      const p = getExportParams();
-      const PREV = 240;
-      const prevH = Math.round(PREV * p.H / p.W);
-      renderToCanvas(previewCanvas, previewCtx, PREV, prevH, {
-        ...p,
-        captionSize: Math.round(p.captionSize * PREV / p.W),
-        lineH: Math.round(p.lineH * PREV / p.W),
-        captionH: Math.round(p.captionH * PREV / p.W),
-        renderH: prevH - Math.round(p.captionH * PREV / p.W),
-      });
-      previewCanvas.style.width = '120px';
-      previewCanvas.style.height = Math.round(120 * p.H / p.W) + 'px';
-      // update lightbox img
-      document.getElementById('preview-lightbox-img').src = previewCanvas.toDataURL('image/png');
-    }
-
-    // Lightbox
-    document.getElementById('export-preview-wrap').addEventListener('click', () => {
-      document.getElementById('preview-lightbox').classList.add('open');
-    });
-    document.getElementById('preview-lightbox').addEventListener('click', () => {
-      document.getElementById('preview-lightbox').classList.remove('open');
-    });
-
-    // Offscreen PNG render (full res)
-    function doCanvasExport() {
-      const p = getExportParams();
-      const { W, H } = p;
-      const finalCanvas = document.createElement('canvas');
-      const finalCtx = finalCanvas.getContext('2d');
-      renderToCanvas(finalCanvas, finalCtx, W, H, p);
       finalCanvas.toBlob((blob) => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -1240,8 +1223,6 @@
 
     // Initial build
     rebuildMesh();
-    // Trigger first preview after a short delay (scene needs one frame)
-    setTimeout(updatePreview, 800);
   </script>
 </body>
 </html>
