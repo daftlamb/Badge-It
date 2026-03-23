@@ -362,9 +362,7 @@
     }
     setEnvironment('studio');
     // Load HDR from Three.js official CDN for reliable CORS-friendly access
-    new RGBELoader()
-      .setPath('https://threejs.org/examples/textures/equirectangular/')
-      .load('royal_esplanade_1k.hdr', function(tex) {
+    new RGBELoader().load('https://threejs.org/examples/textures/equirectangular/royal_esplanade_1k.hdr', function(tex) {
         environments.studio = pmremGenerator.fromEquirectangular(tex).texture;
         tex.dispose();
         const envSel = document.getElementById('env-select');
@@ -456,18 +454,12 @@
         const shapes = SVGLoader.createShapes(path);
         if (shapes.length === 0) return;
 
-        let color = group.children.length === 0 ? layer1Color : layer2Color;
+        const isBase = group.children.length === 0;
+        // Always use layer color (user controls via picker)
+        let color = isBase ? layer1Color : layer2Color;
         let usesGlobalColor = true;
-        const style = path.userData && path.userData.style;
-        const fillColor = style && style.fill;
-        if (fillColor && fillColor !== 'none' && fillColor !== '#000000' &&
-            fillColor !== '#ffffff' && fillColor !== 'black' && fillColor !== 'white') {
-          color = fillColor;
-          usesGlobalColor = false;
-        }
 
         // Stepped mode: first path uses full depth, subsequent paths raised/inset
-        const isBase = group.children.length === 0;
         const pathDepth = isBase ? currentDepth : currentDepth * layer2DepthRatio;
         let geometry = new THREE.ExtrudeGeometry(shapes, {
           depth: pathDepth, bevelEnabled,
