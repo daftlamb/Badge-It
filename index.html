@@ -337,8 +337,10 @@
       </div>
 
       <div class="field" style="margin-top:2px">
-        <label class="section-label">caption text</label>
-        <input type="text" id="export-caption" placeholder="e.g. Badge It · badgeitapp.com" style="font-family:var(--font);font-size:10px;width:100%;padding:5px 8px;border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none" />
+        <label class="section-label">caption — name</label>
+        <input type="text" id="export-caption-name" placeholder="e.g. mog" style="font-family:var(--font);font-size:10px;width:100%;padding:5px 8px;border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;margin-bottom:6px" />
+        <label class="section-label">caption — copyright</label>
+        <input type="text" id="export-caption-copy" placeholder="e.g. © 2026 badgeitapp.com" style="font-family:var(--font);font-size:10px;width:100%;padding:5px 8px;border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none" />
       </div>
       <div id="caption-options" style="margin-top:6px">
         <div class="slider-row">
@@ -908,12 +910,16 @@
       }
       const bgMode = document.getElementById('export-bg').value;
       const padding = parseFloat(document.getElementById('export-padding').value);
-      const caption = document.getElementById('export-caption').value.trim();
+      const captionName = document.getElementById('export-caption-name').value.trim();
+      const captionCopy = document.getElementById('export-caption-copy').value.trim();
       const captionSize = parseInt(document.getElementById('caption-size').value);
       const captionColor = document.getElementById('caption-color').value;
+      const hasCaption = captionName || captionCopy;
+      const lineCount = (captionName ? 1 : 0) + (captionCopy ? 1 : 0);
 
       // caption area height
-      const captionH = caption ? Math.round(captionSize * 2.2) : 0;
+      const lineH = captionSize * 1.6;
+      const captionH = hasCaption ? Math.round(lineH * lineCount + captionSize * 0.8) : 0;
       const renderH = H - captionH;
 
       // offscreen renderer
@@ -962,14 +968,24 @@
       // draw render
       ctx.drawImage(offRenderer.domElement, 0, 0, W, renderH);
 
-      // draw caption
-      if (caption) {
-        const fontPx = captionSize;
-        ctx.font = `${fontPx}px "Courier New", monospace`;
-        ctx.fillStyle = captionColor;
+      // draw caption — name (larger) + copyright (smaller)
+      if (hasCaption) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(caption, W / 2, renderH + captionH / 2);
+        let y = renderH + captionSize * 0.6;
+        if (captionName) {
+          ctx.font = `${captionSize}px "Courier New", monospace`;
+          ctx.fillStyle = captionColor;
+          ctx.fillText(captionName, W / 2, y);
+          y += lineH;
+        }
+        if (captionCopy) {
+          ctx.font = `${Math.round(captionSize * 0.75)}px "Courier New", monospace`;
+          ctx.fillStyle = captionColor;
+          ctx.globalAlpha = 0.65;
+          ctx.fillText(captionCopy, W / 2, y);
+          ctx.globalAlpha = 1;
+        }
       }
 
       offRenderer.dispose();
