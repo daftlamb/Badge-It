@@ -551,14 +551,39 @@
   </div>
 
   <div class="modal-overlay" id="about-modal">
-    <div class="modal-box">
+    <div class="modal-box" style="max-width:480px;max-height:85vh;overflow-y:auto">
       <button class="modal-close" data-modal="about-modal">&#10005;</button>
       <h3>About Badge It</h3>
-      <p>Badge It is a browser-based 3D badge / pin previewer. Upload an SVG, tweak the material and lighting, and export a PNG render — no software needed.</p>
-      <p>Badge It 是一个基于浏览器的 3D 徽章预览工具。上传 SVG，调整材质和灯光，导出 PNG 渲染图，无需安装任何软件。</p>
-      <p>Made by <strong>mog</strong><br>
-      <a href="mailto:daftlamb@gmail.com">daftlamb@gmail.com</a><br>
-      <a href="https://badgeitapp.com" target="_blank">badgeitapp.com</a></p>
+      <p style="margin-bottom:14px">Browser-based 3D badge previewer — upload an SVG, tweak materials &amp; lighting, export PNG / GLB / video. No software needed.<br>
+      基于浏览器的 3D 徽章预览工具，无需安装任何软件。</p>
+
+      <div style="font-size:10px;color:var(--text);line-height:2;letter-spacing:0.03em">
+        <div style="color:var(--muted);font-size:9px;letter-spacing:0.12em;margin-bottom:4px">3D PREVIEW</div>
+        SVG → 3D ExtrudeGeometry · Round bevel · Ortho camera · Drag / zoom / pan<br>
+        Preset shapes: Circle / Hex / Pentagon / Square / Shield
+
+        <div style="color:var(--muted);font-size:9px;letter-spacing:0.12em;margin:10px 0 4px">MULTI-LAYER</div>
+        Up to 6 layers · Per-layer color, Z offset, depth ratio<br>
+        Inset (negative Z) &amp; raised effects · No seams
+
+        <div style="color:var(--muted);font-size:9px;letter-spacing:0.12em;margin:10px 0 4px">MATERIAL</div>
+        PBR: metalness / roughness · 6 Matcap textures (Chrome / Gold / Bronze / Dark Metal / Blue Glass / Purple)<br>
+        3 Normal maps: Brushed / Scratched / Leather · Custom HDR upload
+
+        <div style="color:var(--muted);font-size:9px;letter-spacing:0.12em;margin:10px 0 4px">CANVAS EXPORT</div>
+        Sizes: 512 / 1024 / 2048 / custom · Background: transparent / color / gradient (6 directions)<br>
+        Caption (Outfit + Noto Sans SC) · Viewport frame preview with vignette
+
+        <div style="color:var(--muted);font-size:9px;letter-spacing:0.12em;margin:10px 0 4px">EXPORT FORMATS</div>
+        PNG — free · GLB 3D file — ☕ · WebM video (20s rotation) — ☕<br>
+        Video: dedicated offscreen renderer, gradient-composited, no distortion
+      </div>
+
+      <p style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+        Made by <strong>mog</strong><br>
+        <a href="mailto:daftlamb@gmail.com">daftlamb@gmail.com</a> ·
+        <a href="https://badgeitapp.com" target="_blank">badgeitapp.com</a>
+      </p>
     </div>
   </div>
 
