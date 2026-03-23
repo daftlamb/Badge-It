@@ -371,6 +371,14 @@
           <div class="toggle-thumb"></div>
         </label>
       </div>
+      <div class="toggle-row" style="margin-bottom:12px">
+        <span class="toggle-label">auto rotate</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="auto-rotate-toggle" />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
 
       <div class="field">
         <label class="section-label">size</label>
@@ -799,13 +807,25 @@
     }
 
     let animating = true;
+    let autoRotate = false;
+    const AUTO_ROTATE_SPEED = 0.005; // radians per frame (~0.3°/frame @ 60fps = ~18°/sec → full 360° in 20s)
+
     function animate() {
       if (!animating) return;
       requestAnimationFrame(animate);
       controls.update();
+      if (autoRotate && mesh) {
+        mesh.rotation.y += AUTO_ROTATE_SPEED;
+      }
       renderer.render(scene, camera);
     }
     animate();
+
+    document.getElementById('auto-rotate-toggle').addEventListener('change', (e) => {
+      autoRotate = e.target.checked;
+      // Disable orbit controls while rotating so they don't conflict
+      controls.enabled = !autoRotate;
+    });
 
     function onResize() {
       const w = canvasArea.clientWidth, h = canvasArea.clientHeight;
