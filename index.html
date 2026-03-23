@@ -314,7 +314,6 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
     import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
     let currentSVGString = null;
@@ -355,11 +354,15 @@
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     pmremGenerator.compileEquirectangularShader();
-    const studioEnvTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
-    const environments = { none: null, studio: studioEnvTexture, city: null, sunset: null };
+    const environments = { none: null, studio: null, city: null, sunset: null };
 
-    // Load HDR environments from Poly Haven CDN
+    // Load bundled studio HDR
     const rgbeLoader = new RGBELoader();
+    rgbeLoader.load('studio.hdr', tex => {
+      environments.studio = pmremGenerator.fromEquirectangular(tex).texture;
+      tex.dispose();
+      setEnvironment('studio');
+    });
     rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/city_1k.hdr', tex => {
       environments.city = pmremGenerator.fromEquirectangular(tex).texture;
       tex.dispose();
@@ -373,8 +376,6 @@
       scene.environment = environments[key] || null;
       renderer.toneMappingExposure = key === 'none' ? 1.0 : 1.2;
     }
-    // Default to studio
-    setEnvironment('studio');
     document.getElementById('environment').value = 'studio';
 
     const orthoSize = 2.5;
