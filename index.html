@@ -393,12 +393,34 @@
         <select id="export-bg">
           <option value="transparent">Transparent</option>
           <option value="scene" selected>Scene color</option>
-          <option value="color">Custom color</option>
+          <option value="color">Solid color</option>
+          <option value="gradient">Gradient</option>
         </select>
       </div>
       <div id="export-bg-color-row" class="color-row" style="display:none;margin-top:6px">
         <span class="color-label">bg color</span>
         <input type="color" id="export-bg-color" value="#ffffff" />
+      </div>
+      <div id="export-bg-gradient-row" style="display:none;margin-top:6px">
+        <div class="color-row" style="margin-bottom:6px">
+          <span class="color-label">color 1</span>
+          <input type="color" id="grad-color1" value="#1a1a2e" />
+        </div>
+        <div class="color-row" style="margin-bottom:6px">
+          <span class="color-label">color 2</span>
+          <input type="color" id="grad-color2" value="#e8e7e3" />
+        </div>
+        <div class="field">
+          <label class="section-label">direction</label>
+          <select id="grad-direction">
+            <option value="tb">Top → Bottom</option>
+            <option value="bt">Bottom → Top</option>
+            <option value="lr">Left → Right</option>
+            <option value="rl">Right → Left</option>
+            <option value="diag">Diagonal ↘</option>
+            <option value="radial">Radial</option>
+          </select>
+        </div>
       </div>
 
       <div class="slider-row" style="margin-top:8px">
@@ -776,7 +798,9 @@
       }
     }
 
+    let animating = true;
     function animate() {
+      if (!animating) return;
       requestAnimationFrame(animate);
       controls.update();
       renderer.render(scene, camera);
@@ -968,17 +992,71 @@
     // Canvas preview toggle — frame overlay
     const canvasFrame = document.getElementById('canvas-frame');
     let canvasPreviewActive = false;
-    let originalSceneBg = null; // save original bg when preview mode changes it
+    let originalSceneBg = null;
 
+    function makeGradientTexture(w, h) {
+      const c1 = document.getElementById('grad-color1').value;
+      const c2 = document.getElementById('grad-color2').value;
+      const dir = document.getElementById('grad-direction').value;
+      const gc = document.createElement('canvas');
+      gc.width = w; gc.height = h;
+      const gctx = gc.getContext('2d');
+      let grad;
+      if (dir === 'radial') {
+        grad = gctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w, h) * 0.6);
+      } else {
+        const coords = {
+          tb: [0,0,0,h], bt: [0,h,0,0],
+          lr: [0,0,w,0], rl: [w,0,0,0],
+          diag: [0,0,w,h]
+        }[dir] || [0,0,0,h];
+        grad = gctx.createLinearGradient(...coords);
+      }
+      grad.addColorStop(0, c1);
+      grad.addColorStop(1, c2);
+      gctx.fillStyle = grad;
+      gctx.fillRect(0, 0, w, h);
+      const tex = new THREE.CanvasTexture(gc);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return { tex, canvas: gc };
+    }
+
+    function drawGradientOnCtx(ctx, w, h) {
+      const c1 = document.getElementById('grad-color1').value;
+      const c2 = document.getElementById('grad-color2').value;
+      const dir = document.getElementById('grad-direction').value;
+      let grad;
+      if (dir === 'radial') {
+        grad = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w,h) * 0.6);
+      } else {
+        const coords = {
+          tb: [0,0,0,h], bt: [0,h,0,0],
+          lr: [0,0,w,0], rl: [w,0,0,0],
+          diag: [0,0,w,h]
+        }[dir] || [0,0,0,h];
+        grad = ctx.createLinearGradient(...coords);
+      }
+      grad.addColorStop(0, c1);
+      grad.addColorStop(1, c2);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    let gradTex = null;
     function applyPreviewBg() {
       if (!canvasPreviewActive) return;
       const bgMode = document.getElementById('export-bg').value;
+      if (gradTex) { gradTex.dispose(); gradTex = null; }
       if (bgMode === 'color') {
         scene.background = new THREE.Color(document.getElementById('export-bg-color').value);
+      } else if (bgMode === 'gradient') {
+        const { tex } = makeGradientTexture(512, 512);
+        gradTex = tex;
+        scene.background = tex;
       } else if (bgMode === 'transparent') {
         scene.background = null;
       }
-      // 'scene' mode: keep current scene.background unchanged
+      // 'scene': keep as-is
     }
 
     function restoreSceneBg() {
@@ -1035,11 +1113,17 @@
       updateCanvasFrame();
     });
     document.getElementById('export-bg').addEventListener('change', (e) => {
-      document.getElementById('export-bg-color-row').style.display = e.target.value === 'color' ? '' : 'none';
+      const v = e.target.value;
+      document.getElementById('export-bg-color-row').style.display = v === 'color' ? '' : 'none';
+      document.getElementById('export-bg-gradient-row').style.display = v === 'gradient' ? '' : 'none';
       schedulePreview();
       updateCanvasFrame();
     });
     document.getElementById('export-bg-color').addEventListener('input', () => { schedulePreview(); updateCanvasFrame(); });
+    ['grad-color1','grad-color2','grad-direction'].forEach(id => {
+      document.getElementById(id).addEventListener('change', () => { schedulePreview(); updateCanvasFrame(); });
+      document.getElementById(id).addEventListener('input', () => { schedulePreview(); updateCanvasFrame(); });
+    });
     document.getElementById('export-padding').addEventListener('input', (e) => {
       document.getElementById('export-padding-val').textContent = Math.round(e.target.value * 100) + '%';
       schedulePreview();
@@ -1127,6 +1211,9 @@
     function doCanvasExport() {
       if (!mesh) { alert('No model loaded.'); return; }
 
+      // Pause animate loop so it doesn't overwrite our render
+      animating = false;
+
       const p = getExportParams();
       const { W, H, bgMode, padding, captionName, captionCopy, captionSize, captionColor, hasCaption, lineH, captionH } = p;
       const renderH = Math.max(H - captionH, 1);
@@ -1138,10 +1225,12 @@
       // Set bg for render
       if (bgMode === 'color') {
         scene.background = new THREE.Color(document.getElementById('export-bg-color').value);
+      } else if (bgMode === 'gradient') {
+        const { tex } = makeGradientTexture(W, renderH);
+        scene.background = tex;
       } else if (bgMode === 'transparent') {
         scene.background = null;
       }
-      // 'scene' mode: keep as-is
 
       // Build camera from mesh bounds only
       const bbox = new THREE.Box3().setFromObject(mesh);
@@ -1168,7 +1257,9 @@
       const ctx = finalCanvas.getContext('2d');
 
       // Background fill for caption strip
-      if (bgMode !== 'transparent') {
+      if (bgMode === 'gradient') {
+        drawGradientOnCtx(ctx, W, H);
+      } else if (bgMode !== 'transparent') {
         const bgHex = bgMode === 'color'
           ? document.getElementById('export-bg-color').value
           : '#' + (savedBg ? savedBg.getHexString() : 'e8e7e3');
@@ -1204,7 +1295,10 @@
       scene.background = savedBg || new THREE.Color(0xe8e7e3);
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(savedW, savedH);
-      renderer.render(scene, camera);
+
+      // Restart animate loop
+      animating = true;
+      animate();
 
       // Download
       finalCanvas.toBlob((blob) => {
