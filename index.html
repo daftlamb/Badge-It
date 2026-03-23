@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Badge It</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&family=Noto+Sans+SC:wght@300;400&display=swap" rel="stylesheet">
   <script type="importmap">
   {
     "imports": {
@@ -138,7 +138,7 @@
     }
     #caption-overlay.active { display: block; }
     #caption-line-name {
-      font-family: 'Outfit', 'Courier New', monospace;
+      font-family: 'Outfit', 'Noto Sans SC', sans-serif;
       font-weight: 400;
       color: #999;
       white-space: nowrap;
@@ -146,7 +146,7 @@
       text-overflow: ellipsis;
     }
     #caption-line-copy {
-      font-family: 'Outfit', 'Courier New', monospace;
+      font-family: 'Outfit', 'Noto Sans SC', sans-serif;
       font-weight: 300;
       color: #999;
       opacity: 0.65;
@@ -1651,14 +1651,14 @@
         ctx.textBaseline = 'middle';
         let y = renderH + captionSize * 0.6;
         if (captionName) {
-          ctx.font = `400 ${captionSize}px 'Outfit', 'Courier New', monospace`;
+          ctx.font = `400 ${captionSize}px 'Outfit','Noto Sans SC',sans-serif`;
           ctx.fillStyle = captionColor;
           ctx.globalAlpha = 1;
           ctx.fillText(captionName, W / 2, y);
           y += lineH;
         }
         if (captionCopy) {
-          ctx.font = `300 ${Math.round(captionSize * 0.75)}px 'Outfit', 'Courier New', monospace`;
+          ctx.font = `300 ${Math.round(captionSize * 0.75)}px 'Outfit','Noto Sans SC',sans-serif`;
           ctx.fillStyle = captionColor;
           ctx.globalAlpha = 0.65;
           ctx.fillText(captionCopy, W / 2, y);
@@ -1811,12 +1811,12 @@
           offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle';
           let y = renderH + captionSize * 0.6;
           if (captionName) {
-            offCtx.font = `400 ${captionSize}px 'Outfit','Courier New',monospace`;
+            offCtx.font = `400 ${captionSize}px 'Outfit','Noto Sans SC',sans-serif`;
             offCtx.fillStyle = captionColor; offCtx.globalAlpha = 1;
             offCtx.fillText(captionName, W/2, y); y += lineH;
           }
           if (captionCopy) {
-            offCtx.font = `300 ${Math.round(captionSize*0.75)}px 'Outfit','Courier New',monospace`;
+            offCtx.font = `300 ${Math.round(captionSize*0.75)}px 'Outfit','Noto Sans SC',sans-serif`;
             offCtx.fillStyle = captionColor; offCtx.globalAlpha = 0.65;
             offCtx.fillText(captionCopy, W/2, y); offCtx.globalAlpha = 1;
           }
@@ -1827,8 +1827,10 @@
       let frameLoopActive = true;
       function recordLoop() {
         if (!frameLoopActive) return;
-        compositeFrame();
-        // Also update main viewport so user sees the rotation during recording
+        compositeFrame(); // updates recCam position internally
+        // Sync main camera to recCam so viewport shows the rotation
+        camera.position.copy(recCam.position);
+        camera.lookAt(recCenter);
         renderer.render(scene, camera);
         requestAnimationFrame(recordLoop);
       }
