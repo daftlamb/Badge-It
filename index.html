@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Badge It</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
   <script type="importmap">
   {
     "imports": {
@@ -87,6 +89,45 @@
     .color-hex { font-size: 10px; color: var(--text); }
     #canvas-area { background: var(--canvas-bg); position: relative; overflow: hidden; }
     #canvas-area canvas { display: block; width: 100% !important; height: 100% !important; }
+
+    /* Canvas preview thumbnail */
+    #export-preview-wrap {
+      position: absolute;
+      bottom: 16px; right: 16px;
+      z-index: 50;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    #export-preview-wrap:hover { transform: scale(1.04); }
+    #export-preview-canvas {
+      display: block;
+      width: 120px; height: auto;
+      border: 1px solid rgba(255,255,255,0.3);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      background: #ccc;
+    }
+    #export-preview-label {
+      text-align: center;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.6);
+      margin-top: 4px;
+      font-family: var(--font);
+    }
+    /* Lightbox */
+    #preview-lightbox {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 2000;
+      align-items: center; justify-content: center;
+      cursor: zoom-out;
+    }
+    #preview-lightbox.open { display: flex; }
+    #preview-lightbox img {
+      max-width: 90vw; max-height: 90vh;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
 
     /* ── Mobile ── */
     @media (max-width: 767px) {
@@ -364,7 +405,17 @@
   <!-- Mobile panel scroll dots -->
   <div id="panel-dots"></div>
 
-  <div id="canvas-area"></div>
+  <div id="canvas-area">
+    <div id="export-preview-wrap" title="preview export · click to enlarge">
+      <canvas id="export-preview-canvas" width="240" height="240"></canvas>
+      <div id="export-preview-label">export preview</div>
+    </div>
+  </div>
+
+  <!-- Preview lightbox -->
+  <div id="preview-lightbox">
+    <img id="preview-lightbox-img" src="" alt="export preview" />
+  </div>
 
   <div class="modal-overlay" id="coffee-modal">
     <div class="modal-box" style="text-align:center">
@@ -677,6 +728,7 @@
       if (!obj) return;
       mesh = obj;
       scene.add(mesh);
+      schedulePreview();
     }
 
     function applyMaterialParams() {
@@ -887,27 +939,43 @@
     // Export panel controls
     document.getElementById('export-size').addEventListener('change', (e) => {
       document.getElementById('custom-size-row').style.display = e.target.value === 'custom' ? '' : 'none';
+      schedulePreview();
     });
     document.getElementById('export-bg').addEventListener('change', (e) => {
       document.getElementById('export-bg-color-row').style.display = e.target.value === 'color' ? '' : 'none';
+      schedulePreview();
     });
+    document.getElementById('export-bg-color').addEventListener('input', schedulePreview);
     document.getElementById('export-padding').addEventListener('input', (e) => {
       document.getElementById('export-padding-val').textContent = Math.round(e.target.value * 100) + '%';
+      schedulePreview();
     });
     document.getElementById('caption-size').addEventListener('input', (e) => {
       document.getElementById('caption-size-val').textContent = e.target.value;
+      schedulePreview();
     });
+    document.getElementById('caption-color').addEventListener('input', schedulePreview);
+    document.getElementById('export-caption-name').addEventListener('input', schedulePreview);
+    document.getElementById('export-caption-copy').addEventListener('input', schedulePreview);
+    document.getElementById('custom-w').addEventListener('input', schedulePreview);
+    document.getElementById('custom-h').addEventListener('input', schedulePreview);
 
-    // Offscreen PNG render
-    function doCanvasExport() {
+    // Preview thumbnail
+    const previewCanvas = document.getElementById('export-preview-canvas');
+    const previewCtx = previewCanvas.getContext('2d');
+    let previewTimer = null;
+    function schedulePreview() {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(updatePreview, 300);
+    }
+
+    function getExportParams() {
       const sizeEl = document.getElementById('export-size');
       let W, H;
       if (sizeEl.value === 'custom') {
         W = parseInt(document.getElementById('custom-w').value) || 1024;
         H = parseInt(document.getElementById('custom-h').value) || 1024;
-      } else {
-        W = H = parseInt(sizeEl.value);
-      }
+      } else { W = H = parseInt(sizeEl.value); }
       const bgMode = document.getElementById('export-bg').value;
       const padding = parseFloat(document.getElementById('export-padding').value);
       const captionName = document.getElementById('export-caption-name').value.trim();
@@ -916,29 +984,26 @@
       const captionColor = document.getElementById('caption-color').value;
       const hasCaption = captionName || captionCopy;
       const lineCount = (captionName ? 1 : 0) + (captionCopy ? 1 : 0);
-
-      // caption area height
       const lineH = captionSize * 1.6;
       const captionH = hasCaption ? Math.round(lineH * lineCount + captionSize * 0.8) : 0;
       const renderH = H - captionH;
+      return { W, H, bgMode, padding, captionName, captionCopy, captionSize, captionColor, hasCaption, lineH, captionH, renderH };
+    }
 
-      // offscreen renderer
-      const offRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: bgMode === 'transparent', preserveDrawingBuffer: true, logarithmicDepthBuffer: true });
-      offRenderer.setPixelRatio(1);
-      offRenderer.setSize(W, renderH);
-      offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-      offRenderer.toneMappingExposure = renderer.toneMappingExposure;
-      offRenderer.outputColorSpace = THREE.SRGBColorSpace;
+    function renderToCanvas(destCanvas, destCtx, W, H, params) {
+      const { bgMode, padding, captionName, captionCopy, captionSize, captionColor, hasCaption, lineH, captionH, renderH } = params;
 
-      if (bgMode === 'transparent') {
-        offRenderer.setClearColor(0x000000, 0);
-      } else if (bgMode === 'color') {
-        offRenderer.setClearColor(new THREE.Color(document.getElementById('export-bg-color').value), 1);
-      } else {
-        offRenderer.setClearColor(scene.background, 1);
-      }
+      const offR = new THREE.WebGLRenderer({ antialias: true, alpha: bgMode === 'transparent', preserveDrawingBuffer: true, logarithmicDepthBuffer: true });
+      offR.setPixelRatio(1);
+      offR.setSize(W, renderH);
+      offR.toneMapping = THREE.ACESFilmicToneMapping;
+      offR.toneMappingExposure = renderer.toneMappingExposure;
+      offR.outputColorSpace = THREE.SRGBColorSpace;
 
-      // offscreen camera matching aspect ratio with padding
+      if (bgMode === 'transparent') { offR.setClearColor(0x000000, 0); }
+      else if (bgMode === 'color') { offR.setClearColor(new THREE.Color(document.getElementById('export-bg-color').value), 1); }
+      else { offR.setClearColor(scene.background, 1); }
+
       const aspect = W / renderH;
       const bbox = new THREE.Box3().setFromObject(scene);
       const bsphere = new THREE.Sphere();
@@ -947,49 +1012,83 @@
       const offCam = new THREE.OrthographicCamera(-r * aspect, r * aspect, r, -r, 0.001, 1000);
       offCam.position.copy(camera.position).normalize().multiplyScalar(r * 3 + 5);
       offCam.lookAt(bsphere.center);
+      offR.render(scene, offCam);
 
-      // apply current environment
-      const offScene = scene;
-      offRenderer.render(offScene, offCam);
+      destCanvas.width = W;
+      destCanvas.height = H;
 
-      // compose final canvas (render + caption)
-      const finalCanvas = document.createElement('canvas');
-      finalCanvas.width = W;
-      finalCanvas.height = H;
-      const ctx = finalCanvas.getContext('2d');
-
-      // background fill for caption area
       if (bgMode !== 'transparent') {
         const bgColor = bgMode === 'color' ? document.getElementById('export-bg-color').value : '#' + scene.background.getHexString();
-        ctx.fillStyle = bgColor;
-        ctx.fillRect(0, 0, W, H);
+        destCtx.fillStyle = bgColor;
+        destCtx.fillRect(0, 0, W, H);
+      } else {
+        // checkerboard for transparent preview
+        const sz = Math.max(8, Math.round(W / 40));
+        for (let y = 0; y < H; y += sz) {
+          for (let x = 0; x < W; x += sz) {
+            destCtx.fillStyle = ((x / sz + y / sz) % 2 === 0) ? '#ccc' : '#fff';
+            destCtx.fillRect(x, y, sz, sz);
+          }
+        }
       }
 
-      // draw render
-      ctx.drawImage(offRenderer.domElement, 0, 0, W, renderH);
+      destCtx.drawImage(offR.domElement, 0, 0, W, renderH);
 
-      // draw caption — name (larger) + copyright (smaller)
       if (hasCaption) {
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        destCtx.textAlign = 'center';
+        destCtx.textBaseline = 'middle';
         let y = renderH + captionSize * 0.6;
         if (captionName) {
-          ctx.font = `${captionSize}px "Courier New", monospace`;
-          ctx.fillStyle = captionColor;
-          ctx.fillText(captionName, W / 2, y);
+          destCtx.font = `400 ${captionSize}px 'Outfit', 'Courier New', monospace`;
+          destCtx.fillStyle = captionColor;
+          destCtx.globalAlpha = 1;
+          destCtx.fillText(captionName, W / 2, y);
           y += lineH;
         }
         if (captionCopy) {
-          ctx.font = `${Math.round(captionSize * 0.75)}px "Courier New", monospace`;
-          ctx.fillStyle = captionColor;
-          ctx.globalAlpha = 0.65;
-          ctx.fillText(captionCopy, W / 2, y);
-          ctx.globalAlpha = 1;
+          destCtx.font = `300 ${Math.round(captionSize * 0.75)}px 'Outfit', 'Courier New', monospace`;
+          destCtx.fillStyle = captionColor;
+          destCtx.globalAlpha = 0.65;
+          destCtx.fillText(captionCopy, W / 2, y);
+          destCtx.globalAlpha = 1;
         }
       }
 
-      offRenderer.dispose();
+      offR.dispose();
+    }
 
+    function updatePreview() {
+      const p = getExportParams();
+      const PREV = 240;
+      const prevH = Math.round(PREV * p.H / p.W);
+      renderToCanvas(previewCanvas, previewCtx, PREV, prevH, {
+        ...p,
+        captionSize: Math.round(p.captionSize * PREV / p.W),
+        lineH: Math.round(p.lineH * PREV / p.W),
+        captionH: Math.round(p.captionH * PREV / p.W),
+        renderH: prevH - Math.round(p.captionH * PREV / p.W),
+      });
+      previewCanvas.style.width = '120px';
+      previewCanvas.style.height = Math.round(120 * p.H / p.W) + 'px';
+      // update lightbox img
+      document.getElementById('preview-lightbox-img').src = previewCanvas.toDataURL('image/png');
+    }
+
+    // Lightbox
+    document.getElementById('export-preview-wrap').addEventListener('click', () => {
+      document.getElementById('preview-lightbox').classList.add('open');
+    });
+    document.getElementById('preview-lightbox').addEventListener('click', () => {
+      document.getElementById('preview-lightbox').classList.remove('open');
+    });
+
+    // Offscreen PNG render (full res)
+    function doCanvasExport() {
+      const p = getExportParams();
+      const { W, H } = p;
+      const finalCanvas = document.createElement('canvas');
+      const finalCtx = finalCanvas.getContext('2d');
+      renderToCanvas(finalCanvas, finalCtx, W, H, p);
       finalCanvas.toBlob((blob) => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -1067,6 +1166,8 @@
 
     // Initial build
     rebuildMesh();
+    // Trigger first preview after a short delay (scene needs one frame)
+    setTimeout(updatePreview, 800);
   </script>
 </body>
 </html>
