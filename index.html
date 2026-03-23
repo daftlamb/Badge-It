@@ -4,776 +4,818 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Badge It</title>
-  <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #111111;
-      --panel: #1a1a1a;
-      --border: #2a2a2a;
-      --text: #ffffff;
-      --muted: #888888;
-      --accent: #e07820;
+      --bg: #f5f4f0;
+      --panel: #f5f4f0;
+      --border: #d0cfc9;
+      --text: #1a1a1a;
+      --muted: #999999;
+      --accent: #1a1a1a;
+      --canvas-bg: #e8e7e3;
       --font: 'Courier New', monospace;
     }
 
     html, body {
       height: 100%;
-      background: var(--bg);
-      color: var(--text);
       font-family: var(--font);
+      color: var(--text);
       overflow: hidden;
     }
 
+    body {
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      grid-template-rows: auto 1fr;
+      height: 100vh;
+    }
+
     /* ── Header ── */
-    #header {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      height: 48px;
-      background: var(--panel);
+    header {
+      grid-column: 1 / -1;
+      height: 44px;
+      background: #ffffff;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 20px;
+      padding: 0 16px;
       z-index: 100;
     }
 
-    #header .logo {
-      font-size: 16px;
+    .logo {
+      font-size: 13px;
       font-weight: bold;
-      letter-spacing: 3px;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
       color: var(--accent);
     }
 
-    #header .logo span {
-      color: var(--text);
-    }
-
-    #btn-coffee {
-      background: var(--accent);
-      border: none;
-      color: #fff;
-      font-family: var(--font);
-      font-size: 14px;
-      padding: 4px 12px;
-      cursor: pointer;
-      border-radius: 3px;
-      letter-spacing: 1px;
-      transition: opacity 0.2s;
-    }
-    #btn-coffee:hover { opacity: 0.85; }
-
-    /* ── Layout ── */
-    #app {
-      display: flex;
-      height: 100vh;
-      padding-top: 48px;
-    }
-
-    /* ── Left Panel ── */
-    #panel {
-      width: 300px;
-      flex-shrink: 0;
-      background: var(--panel);
-      border-right: 1px solid var(--border);
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    #panel::-webkit-scrollbar { width: 4px; }
-    #panel::-webkit-scrollbar-track { background: transparent; }
-    #panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-    .section {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .section-title {
-      font-size: 10px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: var(--muted);
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    label {
-      font-size: 11px;
-      color: var(--muted);
-      letter-spacing: 1px;
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    select, input[type="color"] {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 12px;
-      padding: 6px 8px;
-      appearance: none;
-      -webkit-appearance: none;
-      cursor: pointer;
-      border-radius: 2px;
-    }
-
-    select:focus { outline: 1px solid var(--accent); }
-
-    .select-wrapper {
-      position: relative;
-    }
-    .select-wrapper::after {
-      content: '▾';
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--muted);
-      pointer-events: none;
-      font-size: 11px;
-    }
-
-    input[type="color"] {
-      padding: 2px 4px;
-      height: 32px;
-      cursor: pointer;
-    }
-
-    /* Slider */
-    .slider-row {
+    .header-right {
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    input[type="range"] {
-      flex: 1;
-      -webkit-appearance: none;
-      height: 3px;
+    /* ── Buttons ── */
+    .btn {
+      font-family: var(--font);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: lowercase;
+      color: var(--accent);
+      background: transparent;
+      border: 1px solid var(--accent);
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-coffee {
+      font-family: var(--font);
+      font-size: 13px;
+      background: transparent;
+      border: 1px solid #e07820;
+      color: #e07820;
+      padding: 4px 8px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-coffee:hover {
+      background: #e07820;
+      color: #fff;
+    }
+
+    .btn-wide {
+      width: 100%;
+      padding: 7px 10px;
+      font-size: 11px;
+    }
+
+    .btn-muted {
+      border-color: var(--border);
+      color: var(--muted);
+      font-size: 10px;
+      padding: 3px 7px;
+    }
+    .btn-muted:hover {
       background: var(--border);
-      border-radius: 2px;
+      color: var(--text);
+    }
+
+    /* ── Panel ── */
+    #panel {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    .panel-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* ── Upload ── */
+    .upload-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .upload-filename {
+      font-size: 10px;
+      color: var(--muted);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Select ── */
+    select {
+      font-family: var(--font);
+      font-size: 11px;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 5px 8px;
+      width: 100%;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+    select:focus { outline: none; border-color: var(--accent); }
+
+    /* ── Slider ── */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .slider-row:last-child { margin-bottom: 0; }
+
+    .slider-label {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      flex: 0 0 80px;
+    }
+
+    .slider-val {
+      font-size: 10px;
+      color: var(--text);
+      flex: 0 0 36px;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      flex: 1;
+      height: 2px;
+      background: var(--border);
       outline: none;
       cursor: pointer;
     }
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 12px;
-      height: 12px;
+      width: 8px;
+      height: 14px;
       background: var(--accent);
-      border-radius: 50%;
       cursor: pointer;
     }
-    input[type="range"]::-webkit-slider-thumb:hover {
-      background: #f08930;
-    }
-
-    .slider-val {
-      font-size: 11px;
-      color: var(--muted);
-      min-width: 28px;
-      text-align: right;
-    }
-
-    /* Buttons */
-    .btn {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 11px;
-      letter-spacing: 1px;
-      padding: 8px 12px;
-      cursor: pointer;
-      text-align: left;
-      border-radius: 2px;
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .btn:hover {
-      border-color: var(--accent);
-      background: #1e1e1e;
-    }
-
-    .btn-accent {
+    input[type="range"]::-moz-range-thumb {
+      width: 8px;
+      height: 14px;
       background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-      text-align: center;
-    }
-    .btn-accent:hover {
-      background: #f08930;
-      border-color: #f08930;
+      border: none;
+      cursor: pointer;
     }
 
-    .btn-danger {
-      border-color: #553333;
-      color: #cc6666;
+    /* ── Toggle ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
     }
-    .btn-danger:hover {
-      border-color: #cc6666;
-      background: #1e1515;
-    }
-
-    #svg-filename {
+    .toggle-label {
       font-size: 10px;
       color: var(--muted);
-      font-style: italic;
-      min-height: 14px;
-      word-break: break-all;
+      letter-spacing: 0.08em;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 32px;
+      height: 16px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .toggle-switch input { display: none; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: #ccc;
+      transition: background 0.2s;
+    }
+    .toggle-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      background: #fff;
+      transition: transform 0.2s;
+    }
+    .toggle-switch input:checked ~ .toggle-track { background: var(--accent); }
+    .toggle-switch input:checked ~ .toggle-thumb { transform: translateX(16px); }
+
+    /* ── Color picker ── */
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .color-label {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      flex: 0 0 80px;
+    }
+    input[type="color"] {
+      width: 32px;
+      height: 20px;
+      border: 1px solid var(--border);
+      background: none;
+      cursor: pointer;
+      padding: 1px;
+    }
+    .color-hex {
+      font-size: 10px;
+      color: var(--text);
     }
 
     /* ── Canvas area ── */
     #canvas-area {
-      flex: 1;
-      background: #f5f5f5;
+      background: var(--canvas-bg);
       position: relative;
       overflow: hidden;
     }
-
     #canvas-area canvas {
       display: block;
       width: 100% !important;
       height: 100% !important;
     }
 
-    .hint {
-      position: absolute;
-      bottom: 16px;
-      right: 16px;
-      font-size: 10px;
-      color: #999;
-      font-family: var(--font);
-      letter-spacing: 1px;
-      pointer-events: none;
-    }
-
-    /* hide the real file input */
-    #svg-input { display: none; }
-
-    .field-group { display: flex; flex-direction: column; gap: 6px; }
-
-    .light-grid {
-      display: grid;
-      grid-template-columns: 40px 1fr 32px;
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
       align-items: center;
-      gap: 6px 8px;
+      justify-content: center;
     }
-    .light-grid label {
-      margin: 0;
-      font-size: 10px;
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #fff;
+      border: 1px solid var(--border);
+      padding: 24px;
+      max-width: 320px;
+      width: 90%;
+      text-align: center;
+      position: relative;
     }
+    .modal-box h3 {
+      font-size: 12px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .modal-box img {
+      width: 100%;
+      max-width: 240px;
+      display: block;
+      margin: 0 auto;
+    }
+    .modal-close {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      color: var(--muted);
+      background: none;
+      border: none;
+      font-family: var(--font);
+    }
+    .modal-close:hover { color: var(--text); }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
-<!-- Header -->
-<header id="header">
-  <div class="logo">Badge<span> It</span></div>
-  <button id="btn-coffee">☕ Buy Me a Coffee</button>
-</header>
+  <!-- Header -->
+  <header>
+    <span class="logo">Badge It</span>
+    <div class="header-right">
+      <button class="btn-coffee" id="btn-coffee">☕</button>
+    </div>
+  </header>
 
-<!-- App Layout -->
-<div id="app">
+  <!-- Left Panel -->
+  <div id="panel">
 
-  <!-- Left Control Panel -->
-  <aside id="panel">
-
-    <!-- Shape -->
-    <div class="section">
-      <div class="section-title">Shape</div>
-      <div class="field-group">
-        <label>Badge Shape</label>
-        <div class="select-wrapper">
-          <select id="sel-shape">
-            <option value="circle" selected>Circle</option>
-            <option value="shield">Shield</option>
-            <option value="hexagon">Hexagon</option>
-            <option value="square">Square</option>
-            <option value="pentagon">Pentagon</option>
-          </select>
-        </div>
+    <!-- SVG Upload -->
+    <div class="panel-section">
+      <div class="section-title">SVG Upload</div>
+      <input type="file" id="svg-file-input" accept=".svg" style="display:none" />
+      <div class="upload-row">
+        <button class="btn" id="btn-upload">upload svg</button>
+        <span class="upload-filename" id="upload-filename">no file</span>
+        <button class="btn btn-muted hidden" id="btn-clear">✕ clear</button>
       </div>
     </div>
 
-    <!-- Design -->
-    <div class="section">
-      <div class="section-title">Design</div>
+    <!-- Shape preset (hidden when SVG uploaded) -->
+    <div class="panel-section" id="section-shape">
+      <div class="section-title">Shape</div>
+      <select id="shape-select">
+        <option value="circle">Circle</option>
+        <option value="hexagon">Hexagon</option>
+        <option value="square">Square</option>
+        <option value="pentagon">Pentagon</option>
+        <option value="shield">Shield</option>
+      </select>
+    </div>
 
-      <div class="field-group">
-        <label>SVG Artwork</label>
-        <input type="file" id="svg-input" accept=".svg" />
-        <button class="btn" id="btn-upload-svg">↑ Upload SVG File</button>
-        <div id="svg-filename">No file selected</div>
-        <button class="btn btn-danger" id="btn-clear-svg">✕ Clear SVG</button>
+    <!-- Extrude -->
+    <div class="panel-section">
+      <div class="section-title">Extrude</div>
+      <div class="slider-row">
+        <span class="slider-label">depth</span>
+        <input type="range" id="depth" min="0.05" max="0.5" step="0.01" value="0.15" />
+        <span class="slider-val" id="depth-val">0.15</span>
       </div>
-
-      <div class="field-group">
-        <label>Badge Base Color</label>
-        <input type="color" id="color-base" value="#e8e8e8" />
+      <div class="toggle-row">
+        <span class="toggle-label">bevel</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="bevel-toggle" checked />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div id="bevel-sliders">
+        <div class="slider-row">
+          <span class="slider-label">thickness</span>
+          <input type="range" id="bevel-thickness" min="0.01" max="0.1" step="0.005" value="0.04" />
+          <span class="slider-val" id="bevel-thickness-val">0.04</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">size</span>
+          <input type="range" id="bevel-size" min="0.01" max="0.08" step="0.005" value="0.02" />
+          <span class="slider-val" id="bevel-size-val">0.02</span>
+        </div>
       </div>
     </div>
 
     <!-- Material -->
-    <div class="section">
+    <div class="panel-section">
       <div class="section-title">Material</div>
-
-      <div class="field-group">
-        <label>Material Type</label>
-        <div class="select-wrapper">
-          <select id="sel-material">
-            <option value="metal" selected>Metal</option>
-            <option value="enamel">Enamel</option>
-            <option value="matte">Matte</option>
-            <option value="plastic">Plastic</option>
-          </select>
-        </div>
+      <div style="margin-bottom:10px">
+        <select id="material-preset">
+          <option value="metal">Metal</option>
+          <option value="enamel">Enamel</option>
+          <option value="matte">Matte</option>
+          <option value="plastic">Plastic</option>
+        </select>
       </div>
-
-      <div class="field-group">
-        <label>Metalness</label>
-        <div class="slider-row">
-          <input type="range" id="sl-metalness" min="0" max="1" step="0.01" value="0.9" />
-          <span class="slider-val" id="val-metalness">0.90</span>
-        </div>
+      <div class="slider-row">
+        <span class="slider-label">metalness</span>
+        <input type="range" id="metalness" min="0" max="1" step="0.01" value="0.9" />
+        <span class="slider-val" id="metalness-val">0.90</span>
       </div>
-
-      <div class="field-group">
-        <label>Roughness</label>
-        <div class="slider-row">
-          <input type="range" id="sl-roughness" min="0" max="1" step="0.01" value="0.2" />
-          <span class="slider-val" id="val-roughness">0.20</span>
-        </div>
+      <div class="slider-row">
+        <span class="slider-label">roughness</span>
+        <input type="range" id="roughness" min="0" max="1" step="0.01" value="0.15" />
+        <span class="slider-val" id="roughness-val">0.15</span>
+      </div>
+      <div class="color-row">
+        <span class="color-label">color</span>
+        <input type="color" id="model-color" value="#c8c8c8" />
+        <span class="color-hex" id="color-hex">#c8c8c8</span>
       </div>
     </div>
 
     <!-- Light -->
-    <div class="section">
+    <div class="panel-section">
       <div class="section-title">Light</div>
-
-      <div class="field-group">
-        <label>Ambient Intensity</label>
-        <div class="slider-row">
-          <input type="range" id="sl-ambient" min="0" max="2" step="0.01" value="0.5" />
-          <span class="slider-val" id="val-ambient">0.50</span>
-        </div>
+      <div class="slider-row">
+        <span class="slider-label">ambient</span>
+        <input type="range" id="ambient-intensity" min="0" max="2" step="0.05" value="0.8" />
+        <span class="slider-val" id="ambient-val">0.80</span>
       </div>
-
-      <div class="light-grid">
-        <label>DIR X</label>
-        <input type="range" id="sl-lx" min="-10" max="10" step="0.1" value="3" />
-        <span class="slider-val" id="val-lx">3.0</span>
-
-        <label>DIR Y</label>
-        <input type="range" id="sl-ly" min="-10" max="10" step="0.1" value="5" />
-        <span class="slider-val" id="val-ly">5.0</span>
-
-        <label>DIR Z</label>
-        <input type="range" id="sl-lz" min="-10" max="10" step="0.1" value="4" />
-        <span class="slider-val" id="val-lz">4.0</span>
+      <div class="slider-row">
+        <span class="slider-label">directional</span>
+        <input type="range" id="dir-intensity" min="0" max="3" step="0.05" value="1.5" />
+        <span class="slider-val" id="dir-val">1.50</span>
       </div>
     </div>
 
     <!-- Export -->
-    <div class="section">
+    <div class="panel-section">
       <div class="section-title">Export</div>
-      <button class="btn btn-accent" id="btn-export">↓ Download PNG</button>
+      <button class="btn btn-wide" id="btn-download">↓ download png</button>
     </div>
 
-  </aside>
-
-  <!-- 3D Canvas Area -->
-  <div id="canvas-area">
-    <div class="hint">Drag to rotate · Scroll to zoom</div>
   </div>
 
-</div>
+  <!-- Canvas -->
+  <div id="canvas-area"></div>
 
-<script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  <!-- Coffee Modal -->
+  <div class="modal-overlay" id="coffee-modal">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close">✕</button>
+      <h3>Buy me a coffee</h3>
+      <img src="qrcode.jpg" alt="QR Code" onerror="this.style.display='none'" />
+    </div>
+  </div>
 
-// ── State ──────────────────────────────────────────────────────────────────
-let currentShape = 'circle';
-let currentMaterial = 'metal';
-let baseColor = '#e8e8e8';
-let svgString = null;
-let svgTexture = null;
-let badge = null;
-let autoRotate = true;
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 
-// ── Renderer / Scene / Camera ──────────────────────────────────────────────
-const canvasArea = document.getElementById('canvas-area');
+    // ── State ──
+    let currentSVGString = null;
+    let currentShape = 'circle';
+    let currentDepth = 0.15;
+    let bevelEnabled = true;
+    let currentBevelThickness = 0.04;
+    let currentBevelSize = 0.02;
+    let currentMetalness = 0.9;
+    let currentRoughness = 0.15;
+    let currentColor = '#c8c8c8';
+    let autoRotate = true;
+    let interactionTimer = null;
 
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  alpha: true,
-  preserveDrawingBuffer: true,
-});
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(canvasArea.clientWidth, canvasArea.clientHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
-renderer.setClearColor(0xf5f5f5, 1);
-canvasArea.appendChild(renderer.domElement);
-
-const scene = new THREE.Scene();
-
-const camera = new THREE.PerspectiveCamera(45, canvasArea.clientWidth / canvasArea.clientHeight, 0.1, 100);
-camera.position.set(0, 0.5, 4);
-
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enablePan = false;
-controls.minPolarAngle = Math.PI * 0.1;
-controls.maxPolarAngle = Math.PI * 0.75;
-controls.enableDamping = true;
-controls.dampingFactor = 0.06;
-controls.minDistance = 2;
-controls.maxDistance = 8;
-
-// ── Lights ─────────────────────────────────────────────────────────────────
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-scene.add(ambientLight);
-
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
-dirLight.position.set(3, 5, 4);
-dirLight.castShadow = true;
-scene.add(dirLight);
-
-const fillLight = new THREE.DirectionalLight(0x8899cc, 0.4);
-fillLight.position.set(-3, -2, 2);
-scene.add(fillLight);
-
-const rimLight = new THREE.DirectionalLight(0xffeedd, 0.3);
-rimLight.position.set(0, -3, -4);
-scene.add(rimLight);
-
-// ── Material presets ───────────────────────────────────────────────────────
-const materialPresets = {
-  metal:   { metalness: 0.9, roughness: 0.2 },
-  enamel:  { metalness: 0.3, roughness: 0.1 },
-  matte:   { metalness: 0.0, roughness: 0.9 },
-  plastic: { metalness: 0.1, roughness: 0.3 },
-};
-
-// ── Geometry builders ──────────────────────────────────────────────────────
-function buildGeometry(shape) {
-  switch (shape) {
-    case 'circle':
-      return new THREE.CylinderGeometry(1, 1, 0.12, 64);
-    case 'hexagon':
-      return new THREE.CylinderGeometry(1, 1, 0.12, 6);
-    case 'pentagon':
-      return new THREE.CylinderGeometry(1, 1, 0.12, 5);
-    case 'square':
-      return new THREE.BoxGeometry(1.8, 1.8, 0.12);
-    case 'shield':
-      return buildShieldGeometry();
-    default:
-      return new THREE.CylinderGeometry(1, 1, 0.12, 64);
-  }
-}
-
-function buildShieldGeometry() {
-  const shape = new THREE.Shape();
-  // Shield path (normalised to ~[-1,1])
-  shape.moveTo(0, 1.1);
-  shape.lineTo(-1.0, 0.6);
-  shape.lineTo(-1.0, -0.2);
-  shape.bezierCurveTo(-1.0, -0.8, -0.5, -1.1, 0, -1.3);
-  shape.bezierCurveTo(0.5, -1.1, 1.0, -0.8, 1.0, -0.2);
-  shape.lineTo(1.0, 0.6);
-  shape.closePath();
-
-  const extrudeSettings = {
-    depth: 0.12,
-    bevelEnabled: true,
-    bevelThickness: 0.02,
-    bevelSize: 0.025,
-    bevelSegments: 4,
-  };
-  const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-  geo.center();
-  // Rotate so the flat face points up (Y+) like a cylinder
-  geo.rotateX(-Math.PI / 2);
-  return geo;
-}
-
-// ── SVG → Texture ──────────────────────────────────────────────────────────
-function svgToTexture(svgStr, color) {
-  return new Promise(resolve => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512; canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      ctx.fillStyle = color;
-      ctx.fillRect(0, 0, 512, 512);
-      ctx.drawImage(img, 0, 0, 512, 512);
-      URL.revokeObjectURL(url);
-      const tex = new THREE.CanvasTexture(canvas);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      resolve(tex);
+    const MATERIAL_PRESETS = {
+      metal:   { metalness: 0.9,  roughness: 0.15 },
+      enamel:  { metalness: 0.2,  roughness: 0.05 },
+      matte:   { metalness: 0.0,  roughness: 0.85 },
+      plastic: { metalness: 0.05, roughness: 0.4  },
     };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
-    img.src = url;
-  });
-}
 
-function solidColorTexture(color) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 64; canvas.height = 64;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = color;
-  ctx.fillRect(0, 0, 64, 64);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
+    // ── Three.js Setup ──
+    const canvasArea = document.getElementById('canvas-area');
 
-// ── Badge builder ──────────────────────────────────────────────────────────
-async function rebuildBadge() {
-  // Remove old badge
-  if (badge) {
-    scene.remove(badge);
-    badge.traverse(obj => {
-      if (obj.geometry) obj.geometry.dispose();
-      if (obj.material) {
-        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
-        else obj.material.dispose();
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(canvasArea.clientWidth, canvasArea.clientHeight);
+    canvasArea.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xe8e7e3);
+
+    const camera = new THREE.PerspectiveCamera(45, canvasArea.clientWidth / canvasArea.clientHeight, 0.01, 100);
+    camera.position.set(0, 0, 5);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enablePan = false;
+    controls.minPolarAngle = 0;
+    controls.maxPolarAngle = Math.PI;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(1, 2, 1);
+    scene.add(dirLight);
+
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    fillLight.position.set(-1, -1, -1);
+    scene.add(fillLight);
+
+    // Material & Mesh
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(currentColor),
+      metalness: currentMetalness,
+      roughness: currentRoughness,
+    });
+
+    let mesh = null;
+
+    function clearMesh() {
+      if (mesh) {
+        scene.remove(mesh);
+        mesh.geometry.dispose();
+        mesh = null;
       }
+    }
+
+    // ── Geometry Builders ──
+    function buildPresetGeometry(shapeName) {
+      let geo;
+      switch (shapeName) {
+        case 'hexagon':
+          geo = new THREE.CylinderGeometry(1, 1, currentDepth, 6);
+          break;
+        case 'square':
+          geo = new THREE.BoxGeometry(1.8, 1.8, currentDepth);
+          break;
+        case 'pentagon':
+          geo = new THREE.CylinderGeometry(1, 1, currentDepth, 5);
+          break;
+        case 'shield': {
+          const s = new THREE.Shape();
+          s.moveTo(0, 1.2);
+          s.lineTo(1.0, 0.8);
+          s.lineTo(1.0, -0.2);
+          s.quadraticCurveTo(0.5, -1.0, 0, -1.2);
+          s.quadraticCurveTo(-0.5, -1.0, -1.0, -0.2);
+          s.lineTo(-1.0, 0.8);
+          s.closePath();
+          const extrudeSettings = {
+            depth: currentDepth,
+            bevelEnabled: bevelEnabled,
+            bevelThickness: currentBevelThickness,
+            bevelSize: currentBevelSize,
+            bevelSegments: 8,
+          };
+          geo = new THREE.ExtrudeGeometry(s, extrudeSettings);
+          geo.computeBoundingBox();
+          const bbox = geo.boundingBox;
+          geo.translate(-(bbox.max.x + bbox.min.x) / 2, -(bbox.max.y + bbox.min.y) / 2, -currentDepth / 2);
+          return geo;
+        }
+        default: // circle
+          geo = new THREE.CylinderGeometry(1, 1, currentDepth, 64);
+          break;
+      }
+      geo.rotateX(Math.PI / 2);
+      return geo;
+    }
+
+    function buildSVGGeometry(svgString) {
+      const loader = new SVGLoader();
+      const svgData = loader.parse(svgString);
+      const shapes = [];
+      svgData.paths.forEach(path => {
+        const pathShapes = SVGLoader.createShapes(path);
+        shapes.push(...pathShapes);
+      });
+
+      if (shapes.length === 0) return null;
+
+      const extrudeSettings = {
+        depth: currentDepth,
+        bevelEnabled: bevelEnabled,
+        bevelThickness: currentBevelThickness,
+        bevelSize: currentBevelSize,
+        bevelSegments: 8,
+      };
+
+      const geometry = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
+      geometry.computeBoundingBox();
+      const bbox = geometry.boundingBox;
+      const cx = (bbox.max.x + bbox.min.x) / 2;
+      const cy = (bbox.max.y + bbox.min.y) / 2;
+      geometry.translate(-cx, -cy, 0);
+
+      const size = new THREE.Vector3();
+      bbox.getSize(size);
+      const maxDim = Math.max(size.x, size.y);
+      const scale = 2.0 / maxDim;
+      geometry.scale(scale, -scale, scale);
+
+      return geometry;
+    }
+
+    function rebuildMesh() {
+      clearMesh();
+
+      let geometry;
+      if (currentSVGString) {
+        geometry = buildSVGGeometry(currentSVGString);
+        if (!geometry) return;
+      } else {
+        geometry = buildPresetGeometry(currentShape);
+      }
+
+      mesh = new THREE.Mesh(geometry, mat);
+      scene.add(mesh);
+    }
+
+    // ── Animation ──
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      if (autoRotate && mesh) {
+        mesh.rotation.y += 0.005;
+      }
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Pause auto-rotate on interaction
+    controls.addEventListener('start', () => {
+      autoRotate = false;
+      clearTimeout(interactionTimer);
     });
-    badge = null;
-  }
-
-  const preset = materialPresets[currentMaterial];
-  const metalness = parseFloat(document.getElementById('sl-metalness').value);
-  const roughness = parseFloat(document.getElementById('sl-roughness').value);
-
-  const geo = buildGeometry(currentShape);
-
-  // Top face texture
-  let topTex;
-  if (svgString) {
-    topTex = await svgToTexture(svgString, baseColor);
-    svgTexture = topTex;
-  } else {
-    topTex = solidColorTexture(baseColor);
-  }
-
-  const sideMat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(baseColor),
-    metalness,
-    roughness,
-  });
-
-  const topMat = new THREE.MeshStandardMaterial({
-    map: topTex,
-    metalness,
-    roughness,
-  });
-
-  const bottomMat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(baseColor),
-    metalness,
-    roughness,
-  });
-
-  let mesh;
-  if (currentShape === 'square') {
-    // BoxGeometry: 6 faces, we want top (index 2 = +Y) to have texture
-    // BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
-    const mats = [sideMat, sideMat, topMat, bottomMat, sideMat, sideMat];
-    mesh = new THREE.Mesh(geo, mats);
-  } else if (currentShape === 'shield') {
-    // ExtrudeGeometry: 2 groups (front=0, back=1, sides=2 if beveled)
-    // We'll use a single material group approach for shield
-    const shieldTopMat = new THREE.MeshStandardMaterial({
-      map: topTex,
-      metalness,
-      roughness,
+    controls.addEventListener('end', () => {
+      clearTimeout(interactionTimer);
+      interactionTimer = setTimeout(() => { autoRotate = true; }, 3000);
     });
-    mesh = new THREE.Mesh(geo, [shieldTopMat, sideMat]);
-  } else {
-    // CylinderGeometry: group 0=side, group 1=top (+Y), group 2=bottom (-Y)
-    const mats = [sideMat, topMat, bottomMat];
-    mesh = new THREE.Mesh(geo, mats);
-  }
 
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  badge = mesh;
-  scene.add(badge);
-}
+    // ── Resize ──
+    function onResize() {
+      const w = canvasArea.clientWidth;
+      const h = canvasArea.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+    window.addEventListener('resize', onResize);
 
-// ── Update only material props (no geometry rebuild) ──────────────────────
-function updateMaterialProps() {
-  if (!badge) return;
-  const metalness = parseFloat(document.getElementById('sl-metalness').value);
-  const roughness = parseFloat(document.getElementById('sl-roughness').value);
+    // ── UI Helpers ──
+    function fmt(v, d = 2) { return Number(v).toFixed(d); }
 
-  const mats = Array.isArray(badge.material) ? badge.material : [badge.material];
-  mats.forEach(m => {
-    m.metalness = metalness;
-    m.roughness = roughness;
-    m.needsUpdate = true;
-  });
-}
+    function bindSlider(id, valId, setter, digits = 2) {
+      const slider = document.getElementById(id);
+      const valEl = document.getElementById(valId);
+      slider.addEventListener('input', () => {
+        const v = parseFloat(slider.value);
+        valEl.textContent = fmt(v, digits);
+        setter(v);
+      });
+    }
 
-// ── Animate ────────────────────────────────────────────────────────────────
-function animate() {
-  requestAnimationFrame(animate);
-  if (badge && autoRotate) {
-    badge.rotation.y += 0.002;
-  }
-  controls.update();
-  renderer.render(scene, camera);
-}
-animate();
+    // ── Controls wiring ──
 
-// ── Resize ────────────────────────────────────────────────────────────────
-window.addEventListener('resize', () => {
-  const w = canvasArea.clientWidth;
-  const h = canvasArea.clientHeight;
-  renderer.setSize(w, h);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-});
+    // SVG Upload
+    const svgInput = document.getElementById('svg-file-input');
+    const btnUpload = document.getElementById('btn-upload');
+    const btnClear = document.getElementById('btn-clear');
+    const uploadFilename = document.getElementById('upload-filename');
+    const sectionShape = document.getElementById('section-shape');
 
-// ── UI Wiring ─────────────────────────────────────────────────────────────
+    btnUpload.addEventListener('click', () => svgInput.click());
+    svgInput.addEventListener('change', () => {
+      const file = svgInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        currentSVGString = e.target.result;
+        uploadFilename.textContent = file.name;
+        btnClear.classList.remove('hidden');
+        sectionShape.classList.add('hidden');
+        rebuildMesh();
+      };
+      reader.readAsText(file);
+    });
 
-// Shape
-document.getElementById('sel-shape').addEventListener('change', e => {
-  currentShape = e.target.value;
-  rebuildBadge();
-});
+    btnClear.addEventListener('click', () => {
+      currentSVGString = null;
+      svgInput.value = '';
+      uploadFilename.textContent = 'no file';
+      btnClear.classList.add('hidden');
+      sectionShape.classList.remove('hidden');
+      rebuildMesh();
+    });
 
-// SVG Upload
-document.getElementById('btn-upload-svg').addEventListener('click', () => {
-  document.getElementById('svg-input').click();
-});
+    // Shape
+    document.getElementById('shape-select').addEventListener('change', (e) => {
+      currentShape = e.target.value;
+      if (!currentSVGString) rebuildMesh();
+    });
 
-document.getElementById('svg-input').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  document.getElementById('svg-filename').textContent = file.name;
-  const reader = new FileReader();
-  reader.onload = evt => {
-    svgString = evt.target.result;
-    rebuildBadge();
-  };
-  reader.readAsText(file);
-});
+    // Depth
+    bindSlider('depth', 'depth-val', (v) => {
+      currentDepth = v;
+      rebuildMesh();
+    });
 
-// Clear SVG
-document.getElementById('btn-clear-svg').addEventListener('click', () => {
-  svgString = null;
-  svgTexture = null;
-  document.getElementById('svg-input').value = '';
-  document.getElementById('svg-filename').textContent = 'No file selected';
-  rebuildBadge();
-});
+    // Bevel toggle
+    const bevelToggle = document.getElementById('bevel-toggle');
+    const bevelSliders = document.getElementById('bevel-sliders');
+    bevelToggle.addEventListener('change', () => {
+      bevelEnabled = bevelToggle.checked;
+      bevelSliders.style.display = bevelEnabled ? '' : 'none';
+      rebuildMesh();
+    });
 
-// Base color
-document.getElementById('color-base').addEventListener('input', e => {
-  baseColor = e.target.value;
-  rebuildBadge();
-});
+    // Bevel sliders
+    bindSlider('bevel-thickness', 'bevel-thickness-val', (v) => {
+      currentBevelThickness = v;
+      if (bevelEnabled) rebuildMesh();
+    }, 3);
+    bindSlider('bevel-size', 'bevel-size-val', (v) => {
+      currentBevelSize = v;
+      if (bevelEnabled) rebuildMesh();
+    }, 3);
 
-// Material preset
-document.getElementById('sel-material').addEventListener('change', e => {
-  currentMaterial = e.target.value;
-  const preset = materialPresets[currentMaterial];
-  document.getElementById('sl-metalness').value = preset.metalness;
-  document.getElementById('sl-roughness').value = preset.roughness;
-  document.getElementById('val-metalness').textContent = preset.metalness.toFixed(2);
-  document.getElementById('val-roughness').textContent = preset.roughness.toFixed(2);
-  updateMaterialProps();
-});
+    // Material preset
+    document.getElementById('material-preset').addEventListener('change', (e) => {
+      const p = MATERIAL_PRESETS[e.target.value];
+      if (!p) return;
+      currentMetalness = p.metalness;
+      currentRoughness = p.roughness;
+      document.getElementById('metalness').value = currentMetalness;
+      document.getElementById('metalness-val').textContent = fmt(currentMetalness);
+      document.getElementById('roughness').value = currentRoughness;
+      document.getElementById('roughness-val').textContent = fmt(currentRoughness);
+      mat.metalness = currentMetalness;
+      mat.roughness = currentRoughness;
+      mat.needsUpdate = true;
+    });
 
-// Metalness slider
-document.getElementById('sl-metalness').addEventListener('input', e => {
-  document.getElementById('val-metalness').textContent = parseFloat(e.target.value).toFixed(2);
-  updateMaterialProps();
-});
+    // Metalness / Roughness
+    bindSlider('metalness', 'metalness-val', (v) => {
+      currentMetalness = v;
+      mat.metalness = v;
+      mat.needsUpdate = true;
+    });
+    bindSlider('roughness', 'roughness-val', (v) => {
+      currentRoughness = v;
+      mat.roughness = v;
+      mat.needsUpdate = true;
+    });
 
-// Roughness slider
-document.getElementById('sl-roughness').addEventListener('input', e => {
-  document.getElementById('val-roughness').textContent = parseFloat(e.target.value).toFixed(2);
-  updateMaterialProps();
-});
+    // Color
+    const colorInput = document.getElementById('model-color');
+    const colorHex = document.getElementById('color-hex');
+    colorInput.addEventListener('input', () => {
+      currentColor = colorInput.value;
+      colorHex.textContent = currentColor;
+      mat.color.set(currentColor);
+      mat.needsUpdate = true;
+    });
 
-// Ambient light
-document.getElementById('sl-ambient').addEventListener('input', e => {
-  const v = parseFloat(e.target.value);
-  document.getElementById('val-ambient').textContent = v.toFixed(2);
-  ambientLight.intensity = v;
-});
+    // Lights
+    bindSlider('ambient-intensity', 'ambient-val', (v) => {
+      ambientLight.intensity = v;
+    });
+    bindSlider('dir-intensity', 'dir-val', (v) => {
+      dirLight.intensity = v;
+    });
 
-// Dir light X/Y/Z
-document.getElementById('sl-lx').addEventListener('input', e => {
-  const v = parseFloat(e.target.value);
-  document.getElementById('val-lx').textContent = v.toFixed(1);
-  dirLight.position.x = v;
-});
-document.getElementById('sl-ly').addEventListener('input', e => {
-  const v = parseFloat(e.target.value);
-  document.getElementById('val-ly').textContent = v.toFixed(1);
-  dirLight.position.y = v;
-});
-document.getElementById('sl-lz').addEventListener('input', e => {
-  const v = parseFloat(e.target.value);
-  document.getElementById('val-lz').textContent = v.toFixed(1);
-  dirLight.position.z = v;
-});
+    // Download PNG
+    document.getElementById('btn-download').addEventListener('click', () => {
+      renderer.render(scene, camera);
+      const a = document.createElement('a');
+      a.download = 'badge.png';
+      a.href = renderer.domElement.toDataURL('image/png');
+      a.click();
+    });
 
-// Export PNG
-document.getElementById('btn-export').addEventListener('click', () => {
-  // Render at 3x resolution
-  const w = canvasArea.clientWidth;
-  const h = canvasArea.clientHeight;
-  renderer.setPixelRatio(window.devicePixelRatio * 3);
-  renderer.setSize(w, h, false);
-  renderer.render(scene, camera);
-  const link = document.createElement('a');
-  link.download = 'badge.png';
-  link.href = renderer.domElement.toDataURL('image/png');
-  link.click();
-  // Restore
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(w, h, false);
-});
+    // Coffee modal
+    document.getElementById('btn-coffee').addEventListener('click', () => {
+      document.getElementById('coffee-modal').classList.add('open');
+    });
+    document.getElementById('modal-close').addEventListener('click', () => {
+      document.getElementById('coffee-modal').classList.remove('open');
+    });
+    document.getElementById('coffee-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+    });
 
-// Coffee button
-document.getElementById('btn-coffee').addEventListener('click', () => {
-  alert('☕ 感谢支持！支付宝付款功能即将上线～');
-});
-
-// Pause auto-rotate on user interaction
-controls.addEventListener('start', () => { autoRotate = false; });
-controls.addEventListener('end', () => {
-  // Resume after 3s of inactivity
-  setTimeout(() => { autoRotate = true; }, 3000);
-});
-
-// ── Init ───────────────────────────────────────────────────────────────────
-rebuildBadge();
-</script>
+    // ── Initial build ──
+    rebuildMesh();
+  </script>
 </body>
 </html>
