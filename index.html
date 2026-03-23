@@ -14,361 +14,113 @@
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg: #f5f4f0;
-      --panel: #f5f4f0;
-      --border: #d0cfc9;
-      --text: #1a1a1a;
-      --muted: #999999;
-      --accent: #1a1a1a;
-      --canvas-bg: #e8e7e3;
-      --font: 'Courier New', monospace;
+      --bg: #f5f4f0; --panel: #f5f4f0; --border: #d0cfc9;
+      --text: #1a1a1a; --muted: #999999; --accent: #1a1a1a;
+      --canvas-bg: #e8e7e3; --font: 'Courier New', monospace;
     }
-
-    html, body {
-      height: 100%;
-      font-family: var(--font);
-      color: var(--text);
-      overflow: hidden;
-    }
-
-    body {
-      display: grid;
-      grid-template-columns: 290px 1fr;
-      grid-template-rows: auto 1fr;
-      height: 100vh;
-    }
-
-    /* ── Header ── */
+    html, body { height: 100%; font-family: var(--font); color: var(--text); overflow: hidden; }
+    body { display: grid; grid-template-columns: 290px 1fr; grid-template-rows: auto 1fr; height: 100vh; }
     header {
-      grid-column: 1 / -1;
-      height: 44px;
-      background: #ffffff;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-      z-index: 100;
+      grid-column: 1 / -1; height: 44px; background: #ffffff;
+      border-bottom: 1px solid var(--border); display: flex;
+      align-items: center; justify-content: space-between;
+      padding: 0 16px; z-index: 100;
     }
-
-    .logo {
-      font-size: 13px;
-      font-weight: bold;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--accent);
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* ── Buttons ── */
+    .logo { font-size: 13px; font-weight: bold; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
+    .header-right { display: flex; align-items: center; gap: 8px; }
     .btn {
-      font-family: var(--font);
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      text-transform: lowercase;
-      color: var(--accent);
-      background: transparent;
-      border: 1px solid var(--accent);
-      padding: 5px 10px;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
+      font-family: var(--font); font-size: 11px; letter-spacing: 0.1em; text-transform: lowercase;
+      color: var(--accent); background: transparent; border: 1px solid var(--accent);
+      padding: 5px 10px; cursor: pointer; transition: background 0.15s, color 0.15s;
     }
-    .btn:hover {
-      background: var(--accent);
-      color: #fff;
-    }
-
+    .btn:hover { background: var(--accent); color: #fff; }
     .btn-coffee {
-      font-family: var(--font);
-      font-size: 13px;
-      background: transparent;
-      border: 1px solid #e07820;
-      color: #e07820;
-      padding: 4px 8px;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
+      font-family: var(--font); font-size: 13px; background: transparent;
+      border: 1px solid #e07820; color: #e07820; padding: 4px 8px;
+      cursor: pointer; transition: background 0.15s, color 0.15s;
     }
-    .btn-coffee:hover {
-      background: #e07820;
-      color: #fff;
+    .btn-coffee:hover { background: #e07820; color: #fff; }
+    .btn-icon {
+      font-family: var(--font); font-size: 13px; background: transparent;
+      border: 1px solid var(--border); color: var(--muted);
+      padding: 4px 8px; cursor: pointer; transition: background 0.15s, color 0.15s; line-height: 1;
     }
-
-    .btn-wide {
-      width: 100%;
-      padding: 7px 10px;
-      font-size: 11px;
-    }
-
-    .btn-muted {
-      border-color: var(--border);
-      color: var(--muted);
-      font-size: 10px;
-      padding: 3px 7px;
-    }
-    .btn-muted:hover {
-      background: var(--border);
-      color: var(--text);
-    }
-
-    /* ── Panel ── */
-    #panel {
-      background: var(--panel);
-      border-right: 1px solid var(--border);
-      overflow-y: auto;
-      padding: 0;
-    }
-
-    .panel-section {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .section-title {
-      font-size: 10px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 10px;
-    }
-
-    /* ── Upload ── */
-    .upload-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .upload-filename {
-      font-size: 10px;
-      color: var(--muted);
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    /* ── Select ── */
+    .btn-icon:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-wide { width: 100%; padding: 7px 10px; font-size: 11px; }
+    .btn-muted { border-color: var(--border); color: var(--muted); font-size: 10px; padding: 3px 7px; }
+    .btn-muted:hover { background: var(--border); color: var(--text); }
+    #panel { background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 0; }
+    .panel-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .section-title { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+    .upload-row { display: flex; align-items: center; gap: 8px; }
+    .upload-filename { font-size: 10px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     select {
-      font-family: var(--font);
-      font-size: 11px;
-      color: var(--text);
-      background: var(--bg);
-      border: 1px solid var(--border);
-      padding: 5px 8px;
-      width: 100%;
-      cursor: pointer;
-      appearance: none;
-      -webkit-appearance: none;
+      font-family: var(--font); font-size: 11px; color: var(--text); background: var(--bg);
+      border: 1px solid var(--border); padding: 5px 8px; width: 100%; cursor: pointer;
+      appearance: none; -webkit-appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 8px center;
+      background-repeat: no-repeat; background-position: right 8px center;
     }
     select:focus { outline: none; border-color: var(--accent); }
-
-    /* ── Slider ── */
-    .slider-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
+    .slider-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
     .slider-row:last-child { margin-bottom: 0; }
-
-    .slider-label {
-      font-size: 10px;
-      color: var(--muted);
-      letter-spacing: 0.08em;
-      flex: 0 0 80px;
-    }
-
-    .slider-val {
-      font-size: 10px;
-      color: var(--text);
-      flex: 0 0 36px;
-      text-align: right;
-    }
-
-    input[type="range"] {
-      -webkit-appearance: none;
-      flex: 1;
-      height: 2px;
-      background: var(--border);
-      outline: none;
-      cursor: pointer;
-    }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 8px;
-      height: 14px;
-      background: var(--accent);
-      cursor: pointer;
-    }
-    input[type="range"]::-moz-range-thumb {
-      width: 8px;
-      height: 14px;
-      background: var(--accent);
-      border: none;
-      cursor: pointer;
-    }
-
-    /* ── Toggle ── */
-    .toggle-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-    .toggle-label {
-      font-size: 10px;
-      color: var(--muted);
-      letter-spacing: 0.08em;
-    }
-
-    .toggle-switch {
-      position: relative;
-      width: 32px;
-      height: 16px;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
+    .slider-label { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; flex: 0 0 80px; }
+    .slider-val { font-size: 10px; color: var(--text); flex: 0 0 36px; text-align: right; }
+    input[type="range"] { -webkit-appearance: none; flex: 1; height: 2px; background: var(--border); outline: none; cursor: pointer; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 8px; height: 14px; background: var(--accent); cursor: pointer; }
+    input[type="range"]::-moz-range-thumb { width: 8px; height: 14px; background: var(--accent); border: none; cursor: pointer; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .toggle-label { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; }
+    .toggle-switch { position: relative; width: 32px; height: 16px; cursor: pointer; flex-shrink: 0; }
     .toggle-switch input { display: none; }
-    .toggle-track {
-      position: absolute;
-      inset: 0;
-      background: #ccc;
-      transition: background 0.2s;
-    }
-    .toggle-thumb {
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 12px;
-      height: 12px;
-      background: #fff;
-      transition: transform 0.2s;
-    }
+    .toggle-track { position: absolute; inset: 0; background: #ccc; transition: background 0.2s; }
+    .toggle-thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; background: #fff; transition: transform 0.2s; }
     .toggle-switch input:checked ~ .toggle-track { background: var(--accent); }
     .toggle-switch input:checked ~ .toggle-thumb { transform: translateX(16px); }
-
-    /* ── Color picker ── */
-    .color-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .color-label {
-      font-size: 10px;
-      color: var(--muted);
-      letter-spacing: 0.08em;
-      flex: 0 0 80px;
-    }
-    input[type="color"] {
-      width: 32px;
-      height: 20px;
-      border: 1px solid var(--border);
-      background: none;
-      cursor: pointer;
-      padding: 1px;
-    }
-    .color-hex {
-      font-size: 10px;
-      color: var(--text);
-    }
-
-    /* ── Canvas area ── */
-    #canvas-area {
-      background: var(--canvas-bg);
-      position: relative;
-      overflow: hidden;
-    }
-    #canvas-area canvas {
-      display: block;
-      width: 100% !important;
-      height: 100% !important;
-    }
-
-    /* ── Modal ── */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
+    .field { margin-bottom: 10px; }
+    .field:last-child { margin-bottom: 0; }
+    .section-label { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; display: block; margin-bottom: 5px; }
+    .color-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .color-label { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; flex: 0 0 80px; }
+    input[type="color"] { width: 32px; height: 20px; border: 1px solid var(--border); background: none; cursor: pointer; padding: 1px; }
+    .color-hex { font-size: 10px; color: var(--text); }
+    #canvas-area { background: var(--canvas-bg); position: relative; overflow: hidden; }
+    #canvas-area canvas { display: block; width: 100% !important; height: 100% !important; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
     .modal-overlay.open { display: flex; }
-    .modal-box {
-      background: #fff;
-      border: 1px solid var(--border);
-      padding: 24px;
-      max-width: 320px;
-      width: 90%;
-      text-align: center;
-      position: relative;
-    }
-    .modal-box h3 {
-      font-size: 12px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--text);
-      margin-bottom: 16px;
-    }
-    .modal-box img {
-      width: 100%;
-      max-width: 240px;
-      display: block;
-      margin: 0 auto;
-    }
-    .modal-close {
-      position: absolute;
-      top: 8px;
-      right: 12px;
-      font-size: 16px;
-      cursor: pointer;
-      color: var(--muted);
-      background: none;
-      border: none;
-      font-family: var(--font);
-    }
+    .modal-box { background: #fff; border: 1px solid var(--border); padding: 24px; max-width: 360px; width: 90%; position: relative; }
+    .modal-box h3 { font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text); margin-bottom: 16px; }
+    .modal-box img { width: 100%; max-width: 240px; display: block; margin: 0 auto; }
+    .modal-box p { font-size: 11px; color: var(--text); line-height: 1.7; margin-bottom: 10px; }
+    .modal-box p:last-child { margin-bottom: 0; }
+    .modal-box a { color: var(--accent); }
+    .modal-close { position: absolute; top: 8px; right: 12px; font-size: 16px; cursor: pointer; color: var(--muted); background: none; border: none; font-family: var(--font); }
     .modal-close:hover { color: var(--text); }
-
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
-
-  <!-- Header -->
   <header>
     <span class="logo">Badge It</span>
     <div class="header-right">
-      <button class="btn-coffee" id="btn-coffee">☕</button>
+      <button class="btn-icon" id="btn-help">?</button>
+      <button class="btn-icon" id="btn-about">i</button>
+      <button class="btn-coffee" id="btn-coffee">&#9749;</button>
     </div>
   </header>
 
-  <!-- Left Panel -->
   <div id="panel">
-
-    <!-- SVG Upload -->
     <div class="panel-section">
       <div class="section-title">SVG Upload</div>
       <input type="file" id="svg-file-input" accept=".svg" style="display:none" />
       <div class="upload-row">
         <button class="btn" id="btn-upload">upload svg</button>
         <span class="upload-filename" id="upload-filename">no file</span>
-        <button class="btn btn-muted hidden" id="btn-clear">✕ clear</button>
+        <button class="btn btn-muted hidden" id="btn-clear">&#10005; clear</button>
       </div>
     </div>
 
-    <!-- Shape preset (hidden when SVG uploaded) -->
     <div class="panel-section" id="section-shape">
       <div class="section-title">Shape</div>
       <select id="shape-select">
@@ -380,7 +132,6 @@
       </select>
     </div>
 
-    <!-- Extrude -->
     <div class="panel-section">
       <div class="section-title">Extrude</div>
       <div class="slider-row">
@@ -400,17 +151,23 @@
         <div class="slider-row">
           <span class="slider-label">thickness</span>
           <input type="range" id="bevel-thickness" min="0.01" max="0.1" step="0.005" value="0.04" />
-          <span class="slider-val" id="bevel-thickness-val">0.04</span>
+          <span class="slider-val" id="bevel-thickness-val">0.040</span>
         </div>
         <div class="slider-row">
           <span class="slider-label">size</span>
           <input type="range" id="bevel-size" min="0.01" max="0.08" step="0.005" value="0.02" />
-          <span class="slider-val" id="bevel-size-val">0.02</span>
+          <span class="slider-val" id="bevel-size-val">0.020</span>
+        </div>
+        <div class="field" id="bevel-type-wrap">
+          <label class="section-label">bevel type</label>
+          <select id="bevel-type">
+            <option value="chamfer">Chamfer</option>
+            <option value="round">Round</option>
+          </select>
         </div>
       </div>
     </div>
 
-    <!-- Material -->
     <div class="panel-section">
       <div class="section-title">Material</div>
       <div style="margin-bottom:10px">
@@ -438,7 +195,6 @@
       </div>
     </div>
 
-    <!-- Light -->
     <div class="panel-section">
       <div class="section-title">Light</div>
       <div class="slider-row">
@@ -447,29 +203,75 @@
         <span class="slider-val" id="ambient-val">0.80</span>
       </div>
       <div class="slider-row">
-        <span class="slider-label">directional</span>
+        <span class="slider-label">intensity</span>
         <input type="range" id="dir-intensity" min="0" max="3" step="0.05" value="1.5" />
         <span class="slider-val" id="dir-val">1.50</span>
       </div>
+      <div class="slider-row">
+        <span class="slider-label">light X</span>
+        <input type="range" id="light-x" min="-3" max="3" step="0.1" value="1" />
+        <span class="slider-val" id="light-x-val">1.0</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">light Y</span>
+        <input type="range" id="light-y" min="-3" max="3" step="0.1" value="2" />
+        <span class="slider-val" id="light-y-val">2.0</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">light Z</span>
+        <input type="range" id="light-z" min="-3" max="3" step="0.1" value="1" />
+        <span class="slider-val" id="light-z-val">1.0</span>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label class="section-label">environment</label>
+        <select id="env-select">
+          <option value="none">None</option>
+          <option value="studio">Studio</option>
+        </select>
+      </div>
     </div>
 
-    <!-- Export -->
     <div class="panel-section">
       <div class="section-title">Export</div>
-      <button class="btn btn-wide" id="btn-download">↓ download png</button>
+      <button class="btn btn-wide" id="btn-download">&#8595; download png</button>
     </div>
-
   </div>
 
-  <!-- Canvas -->
   <div id="canvas-area"></div>
 
-  <!-- Coffee Modal -->
   <div class="modal-overlay" id="coffee-modal">
-    <div class="modal-box">
-      <button class="modal-close" id="modal-close">✕</button>
+    <div class="modal-box" style="text-align:center">
+      <button class="modal-close" data-modal="coffee-modal">&#10005;</button>
       <h3>Buy me a coffee</h3>
       <img src="qrcode.jpg" alt="QR Code" onerror="this.style.display='none'" />
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="help-modal">
+    <div class="modal-box">
+      <button class="modal-close" data-modal="help-modal">&#10005;</button>
+      <h3>How to use / 使用说明</h3>
+      <p><strong>Upload SVG / 上传 SVG</strong><br>
+      Click "upload svg" to load your SVG file. The shape will appear in 3D.<br>
+      点击「upload svg」上传你的 SVG 文件，形状会以 3D 方式呈现。</p>
+      <p><strong>Adjust / 调整参数</strong><br>
+      Use the left panel to control depth, bevel, material, color and lighting.<br>
+      左侧面板可调整挤出深度、倒角、材质、颜色和灯光。</p>
+      <p><strong>Export / 导出</strong><br>
+      Click "download png" to save a PNG screenshot.<br>
+      点击「download png」保存 PNG 截图。</p>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="about-modal">
+    <div class="modal-box">
+      <button class="modal-close" data-modal="about-modal">&#10005;</button>
+      <h3>About Badge It</h3>
+      <p>Badge It is a browser-based 3D badge / pin previewer. Upload an SVG, tweak the material and lighting, and export a PNG render — no software needed.</p>
+      <p>Badge It 是一个基于浏览器的 3D 徽章预览工具。上传 SVG，调整材质和灯光，导出 PNG 渲染图，无需安装任何软件。</p>
+      <p>Made by <strong>mog</strong><br>
+      <a href="mailto:daftlamb@gmail.com">daftlamb@gmail.com</a><br>
+      <a href="https://badgeitapp.com" target="_blank">badgeitapp.com</a></p>
     </div>
   </div>
 
@@ -477,14 +279,15 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-    // ── State ──
     let currentSVGString = null;
     let currentShape = 'circle';
     let currentDepth = 0.15;
     let bevelEnabled = true;
     let currentBevelThickness = 0.04;
     let currentBevelSize = 0.02;
+    let currentBevelSegments = 1;
     let currentMetalness = 0.9;
     let currentRoughness = 0.15;
     let currentColor = '#c8c8c8';
@@ -496,25 +299,28 @@
       plastic: { metalness: 0.05, roughness: 0.4  },
     };
 
-    // ── Three.js Setup ──
     const canvasArea = document.getElementById('canvas-area');
-
     const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(canvasArea.clientWidth, canvasArea.clientHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
     canvasArea.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xe8e7e3);
 
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+    const studioEnvTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    const environments = { none: null, studio: studioEnvTexture };
+    function setEnvironment(key) { scene.environment = environments[key] || null; }
+
     const orthoSize = 2.5;
     const aspect = canvasArea.clientWidth / canvasArea.clientHeight;
     const camera = new THREE.OrthographicCamera(
-      -orthoSize * aspect, orthoSize * aspect,
-      orthoSize, -orthoSize,
-      0.01, 100
+      -orthoSize * aspect, orthoSize * aspect, orthoSize, -orthoSize, 0.01, 100
     );
-    // 等轴测视角：从右上前方看
     camera.position.set(3, 2.5, 3);
     camera.lookAt(0, 0, 0);
 
@@ -525,73 +331,60 @@
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
 
-    // Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
-
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
     dirLight.position.set(1, 2, 1);
     scene.add(dirLight);
-
     const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
     fillLight.position.set(-1, -1, -1);
     scene.add(fillLight);
 
-    // Material & Mesh
     const mat = new THREE.MeshStandardMaterial({
       color: new THREE.Color(currentColor),
-      metalness: currentMetalness,
-      roughness: currentRoughness,
+      metalness: currentMetalness, roughness: currentRoughness,
+      side: THREE.DoubleSide,
     });
 
     let mesh = null;
 
     function clearMesh() {
-      if (mesh) {
-        scene.remove(mesh);
-        mesh.geometry.dispose();
-        mesh = null;
+      if (!mesh) return;
+      scene.remove(mesh);
+      if (mesh.isGroup) {
+        mesh.children.forEach(child => {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) child.material.dispose();
+        });
+      } else {
+        if (mesh.geometry) mesh.geometry.dispose();
       }
+      mesh = null;
     }
 
-    // ── Geometry Builders ──
     function buildPresetGeometry(shapeName) {
       let geo;
       switch (shapeName) {
-        case 'hexagon':
-          geo = new THREE.CylinderGeometry(1, 1, currentDepth, 6);
-          break;
-        case 'square':
-          geo = new THREE.BoxGeometry(1.8, 1.8, currentDepth);
-          break;
-        case 'pentagon':
-          geo = new THREE.CylinderGeometry(1, 1, currentDepth, 5);
-          break;
+        case 'hexagon': geo = new THREE.CylinderGeometry(1, 1, currentDepth, 6); break;
+        case 'square':  geo = new THREE.BoxGeometry(1.8, 1.8, currentDepth); break;
+        case 'pentagon': geo = new THREE.CylinderGeometry(1, 1, currentDepth, 5); break;
         case 'shield': {
           const s = new THREE.Shape();
-          s.moveTo(0, 1.2);
-          s.lineTo(1.0, 0.8);
-          s.lineTo(1.0, -0.2);
+          s.moveTo(0, 1.2); s.lineTo(1.0, 0.8); s.lineTo(1.0, -0.2);
           s.quadraticCurveTo(0.5, -1.0, 0, -1.2);
           s.quadraticCurveTo(-0.5, -1.0, -1.0, -0.2);
-          s.lineTo(-1.0, 0.8);
-          s.closePath();
-          const extrudeSettings = {
-            depth: currentDepth,
-            bevelEnabled: bevelEnabled,
-            bevelThickness: currentBevelThickness,
-            bevelSize: currentBevelSize,
-            bevelSegments: 8,
-          };
-          geo = new THREE.ExtrudeGeometry(s, extrudeSettings);
+          s.lineTo(-1.0, 0.8); s.closePath();
+          geo = new THREE.ExtrudeGeometry(s, {
+            depth: currentDepth, bevelEnabled,
+            bevelThickness: currentBevelThickness, bevelSize: currentBevelSize,
+            bevelSegments: currentBevelSegments,
+          });
           geo.computeBoundingBox();
-          const bbox = geo.boundingBox;
-          geo.translate(-(bbox.max.x + bbox.min.x) / 2, -(bbox.max.y + bbox.min.y) / 2, -currentDepth / 2);
+          const bb = geo.boundingBox;
+          geo.translate(-(bb.max.x + bb.min.x)/2, -(bb.max.y + bb.min.y)/2, -currentDepth/2);
           return geo;
         }
-        default: // circle
-          geo = new THREE.CylinderGeometry(1, 1, currentDepth, 64);
-          break;
+        default: geo = new THREE.CylinderGeometry(1, 1, currentDepth, 64); break;
       }
       geo.rotateX(Math.PI / 2);
       return geo;
@@ -600,59 +393,82 @@
     function buildSVGGeometry(svgString) {
       const loader = new SVGLoader();
       const svgData = loader.parse(svgString);
-      const shapes = [];
-      svgData.paths.forEach(path => {
-        const pathShapes = SVGLoader.createShapes(path);
-        shapes.push(...pathShapes);
+      const group = new THREE.Group();
+
+      svgData.paths.forEach((path) => {
+        const shapes = SVGLoader.createShapes(path);
+        if (shapes.length === 0) return;
+
+        let color = currentColor;
+        const style = path.userData && path.userData.style;
+        const fillColor = style && style.fill;
+        if (fillColor && fillColor !== 'none' && fillColor !== '#000000' &&
+            fillColor !== '#ffffff' && fillColor !== 'black' && fillColor !== 'white') {
+          color = fillColor;
+        }
+
+        const geometry = new THREE.ExtrudeGeometry(shapes, {
+          depth: currentDepth, bevelEnabled,
+          bevelThickness: currentBevelThickness, bevelSize: currentBevelSize,
+          bevelSegments: currentBevelSegments,
+        });
+        const material = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(color),
+          metalness: currentMetalness, roughness: currentRoughness,
+          side: THREE.DoubleSide,
+        });
+        group.add(new THREE.Mesh(geometry, material));
       });
 
-      if (shapes.length === 0) return null;
+      if (group.children.length === 0) return null;
 
-      const extrudeSettings = {
-        depth: currentDepth,
-        bevelEnabled: bevelEnabled,
-        bevelThickness: currentBevelThickness,
-        bevelSize: currentBevelSize,
-        bevelSegments: 8,
-      };
-
-      const geometry = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
-      geometry.computeBoundingBox();
-      const bbox = geometry.boundingBox;
-      const cx = (bbox.max.x + bbox.min.x) / 2;
-      const cy = (bbox.max.y + bbox.min.y) / 2;
-      geometry.translate(-cx, -cy, 0);
-
-      const size = new THREE.Vector3();
-      bbox.getSize(size);
+      const bbox = new THREE.Box3().setFromObject(group);
+      const center = bbox.getCenter(new THREE.Vector3());
+      const size = bbox.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y);
       const scale = 2.0 / maxDim;
-      // Scale XY only, keep Z (depth) as-is so slider is effective
-      geometry.scale(scale, -scale, 1);
-      // Re-center Z after Y flip
-      geometry.computeBoundingBox();
-      const bboxZ = geometry.boundingBox;
-      geometry.translate(0, 0, -(bboxZ.max.z + bboxZ.min.z) / 2);
 
-      return geometry;
+      group.children.forEach(child => {
+        child.geometry.translate(-center.x / scale, -center.y / scale, 0);
+        child.geometry.scale(scale, -scale, 1);
+      });
+
+      const bbox2 = new THREE.Box3().setFromObject(group);
+      const centerZ = (bbox2.max.z + bbox2.min.z) / 2;
+      group.position.z = -centerZ;
+      return group;
     }
 
     function rebuildMesh() {
       clearMesh();
-
-      let geometry;
+      let obj;
       if (currentSVGString) {
-        geometry = buildSVGGeometry(currentSVGString);
-        if (!geometry) return;
+        obj = buildSVGGeometry(currentSVGString);
       } else {
-        geometry = buildPresetGeometry(currentShape);
+        obj = new THREE.Mesh(buildPresetGeometry(currentShape), mat);
       }
-
-      mesh = new THREE.Mesh(geometry, mat);
+      if (!obj) return;
+      mesh = obj;
       scene.add(mesh);
     }
 
-    // ── Animation ──
+    function applyMaterialParams() {
+      if (!mesh) return;
+      if (mesh.isGroup) {
+        mesh.children.forEach(child => {
+          if (child.material) {
+            child.material.metalness = currentMetalness;
+            child.material.roughness = currentRoughness;
+            child.material.needsUpdate = true;
+          }
+        });
+      } else {
+        mat.metalness = currentMetalness;
+        mat.roughness = currentRoughness;
+        mat.needsUpdate = true;
+      }
+    }
+
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
@@ -660,29 +476,16 @@
     }
     animate();
 
-    // Pause auto-rotate on interaction
-    controls.addEventListener('start', () => {
-
-    });
-    controls.addEventListener('end', () => {
-
-    });
-
-    // ── Resize ──
     function onResize() {
-      const w = canvasArea.clientWidth;
-      const h = canvasArea.clientHeight;
-      const newAspect = w / h;
-      camera.left = -orthoSize * newAspect;
-      camera.right = orthoSize * newAspect;
+      const w = canvasArea.clientWidth, h = canvasArea.clientHeight;
+      const a = w / h;
+      camera.left = -orthoSize * a; camera.right = orthoSize * a;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     }
     window.addEventListener('resize', onResize);
 
-    // ── UI Helpers ──
     function fmt(v, d = 2) { return Number(v).toFixed(d); }
-
     function bindSlider(id, valId, setter, digits = 2) {
       const slider = document.getElementById(id);
       const valEl = document.getElementById(valId);
@@ -692,8 +495,6 @@
         setter(v);
       });
     }
-
-    // ── Controls wiring ──
 
     // SVG Upload
     const svgInput = document.getElementById('svg-file-input');
@@ -718,27 +519,20 @@
     });
 
     btnClear.addEventListener('click', () => {
-      currentSVGString = null;
-      svgInput.value = '';
+      currentSVGString = null; svgInput.value = '';
       uploadFilename.textContent = 'no file';
       btnClear.classList.add('hidden');
       sectionShape.classList.remove('hidden');
       rebuildMesh();
     });
 
-    // Shape
     document.getElementById('shape-select').addEventListener('change', (e) => {
       currentShape = e.target.value;
       if (!currentSVGString) rebuildMesh();
     });
 
-    // Depth
-    bindSlider('depth', 'depth-val', (v) => {
-      currentDepth = v;
-      rebuildMesh();
-    });
+    bindSlider('depth', 'depth-val', (v) => { currentDepth = v; rebuildMesh(); });
 
-    // Bevel toggle
     const bevelToggle = document.getElementById('bevel-toggle');
     const bevelSliders = document.getElementById('bevel-sliders');
     bevelToggle.addEventListener('change', () => {
@@ -747,7 +541,6 @@
       rebuildMesh();
     });
 
-    // Bevel sliders
     bindSlider('bevel-thickness', 'bevel-thickness-val', (v) => {
       currentBevelThickness = v;
       if (bevelEnabled) rebuildMesh();
@@ -757,7 +550,12 @@
       if (bevelEnabled) rebuildMesh();
     }, 3);
 
-    // Material preset
+    const bevelTypeSelect = document.getElementById('bevel-type');
+    bevelTypeSelect.addEventListener('change', () => {
+      currentBevelSegments = bevelTypeSelect.value === 'round' ? 8 : 1;
+      if (bevelEnabled) rebuildMesh();
+    });
+
     document.getElementById('material-preset').addEventListener('change', (e) => {
       const p = MATERIAL_PRESETS[e.target.value];
       if (!p) return;
@@ -767,42 +565,40 @@
       document.getElementById('metalness-val').textContent = fmt(currentMetalness);
       document.getElementById('roughness').value = currentRoughness;
       document.getElementById('roughness-val').textContent = fmt(currentRoughness);
-      mat.metalness = currentMetalness;
-      mat.roughness = currentRoughness;
-      mat.needsUpdate = true;
+      applyMaterialParams();
     });
 
-    // Metalness / Roughness
     bindSlider('metalness', 'metalness-val', (v) => {
-      currentMetalness = v;
-      mat.metalness = v;
-      mat.needsUpdate = true;
+      currentMetalness = v; applyMaterialParams();
     });
     bindSlider('roughness', 'roughness-val', (v) => {
-      currentRoughness = v;
-      mat.roughness = v;
-      mat.needsUpdate = true;
+      currentRoughness = v; applyMaterialParams();
     });
 
-    // Color
     const colorInput = document.getElementById('model-color');
     const colorHex = document.getElementById('color-hex');
     colorInput.addEventListener('input', () => {
       currentColor = colorInput.value;
       colorHex.textContent = currentColor;
+      // Update global mat (for preset shapes)
       mat.color.set(currentColor);
       mat.needsUpdate = true;
+      // For SVG groups, only update meshes that use global color (no per-path override)
+      if (mesh && mesh.isGroup) {
+        rebuildMesh();
+      }
     });
 
-    // Lights
-    bindSlider('ambient-intensity', 'ambient-val', (v) => {
-      ambientLight.intensity = v;
-    });
-    bindSlider('dir-intensity', 'dir-val', (v) => {
-      dirLight.intensity = v;
+    bindSlider('ambient-intensity', 'ambient-val', (v) => { ambientLight.intensity = v; });
+    bindSlider('dir-intensity', 'dir-val', (v) => { dirLight.intensity = v; });
+    bindSlider('light-x', 'light-x-val', (v) => { dirLight.position.x = v; }, 1);
+    bindSlider('light-y', 'light-y-val', (v) => { dirLight.position.y = v; }, 1);
+    bindSlider('light-z', 'light-z-val', (v) => { dirLight.position.z = v; }, 1);
+
+    document.getElementById('env-select').addEventListener('change', (e) => {
+      setEnvironment(e.target.value);
     });
 
-    // Download PNG
     document.getElementById('btn-download').addEventListener('click', () => {
       renderer.render(scene, camera);
       const a = document.createElement('a');
@@ -811,18 +607,29 @@
       a.click();
     });
 
-    // Coffee modal
-    document.getElementById('btn-coffee').addEventListener('click', () => {
-      document.getElementById('coffee-modal').classList.add('open');
+    // Modal helpers
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    document.getElementById('btn-coffee').addEventListener('click', () => openModal('coffee-modal'));
+    document.getElementById('btn-help').addEventListener('click', () => openModal('help-modal'));
+    document.getElementById('btn-about').addEventListener('click', () => openModal('about-modal'));
+
+    document.querySelectorAll('.modal-close').forEach(btn => {
+      btn.addEventListener('click', () => closeModal(btn.dataset.modal));
     });
-    document.getElementById('modal-close').addEventListener('click', () => {
-      document.getElementById('coffee-modal').classList.remove('open');
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.classList.remove('open');
+      });
     });
-    document.getElementById('coffee-modal').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+      }
     });
 
-    // ── Initial build ──
+    // Initial build
     rebuildMesh();
   </script>
 </body>
