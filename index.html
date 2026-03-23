@@ -258,7 +258,9 @@
         <label class="section-label">environment</label>
         <select id="env-select">
           <option value="none">None</option>
-          <option value="studio">Studio</option>
+          <option value="studio" selected>Studio</option>
+          <option value="city">City</option>
+          <option value="sunset">Sunset</option>
         </select>
       </div>
     </div>
@@ -311,6 +313,7 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+    import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -353,8 +356,26 @@
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     pmremGenerator.compileEquirectangularShader();
     const studioEnvTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
-    const environments = { none: null, studio: studioEnvTexture };
-    function setEnvironment(key) { scene.environment = environments[key] || null; }
+    const environments = { none: null, studio: studioEnvTexture, city: null, sunset: null };
+
+    // Load HDR environments from Poly Haven CDN
+    const rgbeLoader = new RGBELoader();
+    rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/city_1k.hdr', tex => {
+      environments.city = pmremGenerator.fromEquirectangular(tex).texture;
+      tex.dispose();
+    });
+    rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/golden_bay_1k.hdr', tex => {
+      environments.sunset = pmremGenerator.fromEquirectangular(tex).texture;
+      tex.dispose();
+    });
+
+    function setEnvironment(key) {
+      scene.environment = environments[key] || null;
+      renderer.toneMappingExposure = key === 'none' ? 1.0 : 1.2;
+    }
+    // Default to studio
+    setEnvironment('studio');
+    document.getElementById('environment').value = 'studio';
 
     const orthoSize = 2.5;
     const aspect = canvasArea.clientWidth / canvasArea.clientHeight;
@@ -456,7 +477,7 @@
           depth: pathDepth, bevelEnabled,
           bevelThickness: currentBevelThickness, bevelSize: currentBevelSize,
           bevelSegments: currentBevelSegments,
-          curveSegments: 64,
+          curveSegments: 128,
         });
         // Smooth side normals
         geometry = mergeVertices(geometry, 0.001);
