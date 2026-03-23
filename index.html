@@ -186,6 +186,13 @@
         <span style="font-size:11px;color:var(--muted);flex:1">layer 2+</span>
         <input type="color" id="layer2-color" value="#c8a020" />
       </div>
+      <div class="field" style="margin-top:8px">
+        <label class="section-label">layer 2 style</label>
+        <select id="layer2-style">
+          <option value="raised">Raised (凸出)</option>
+          <option value="inset">Inset (凹陷)</option>
+        </select>
+      </div>
     </div>
 
     <div class="panel-section">
@@ -314,6 +321,7 @@
     let currentLayerMode = 'equal';
     let layer1Color = '#1a1a1a';
     let layer2Color = '#c8a020';
+    let layer2Style = 'raised';
     let currentMetalness = 0.9;
     let currentRoughness = 0.15;
     let currentColor = '#c8c8c8';
@@ -437,10 +445,16 @@
           usesGlobalColor = false;
         }
 
-        // Stepped mode: first path uses full depth, subsequent paths use half depth
-        const pathDepth = (currentLayerMode === 'stepped' && group.children.length > 0)
-          ? currentDepth * 0.5
-          : currentDepth;
+        // Stepped mode: first path uses full depth, subsequent paths raised/inset
+        const isBase = group.children.length === 0;
+        let pathDepth;
+        if (isBase) {
+          pathDepth = currentDepth;
+        } else if (currentLayerMode === 'stepped') {
+          pathDepth = layer2Style === 'inset' ? currentDepth * 0.3 : currentDepth * 0.5;
+        } else {
+          pathDepth = currentDepth;
+        }
         let geometry = new THREE.ExtrudeGeometry(shapes, {
           depth: pathDepth, bevelEnabled,
           bevelThickness: currentBevelThickness, bevelSize: currentBevelSize,
@@ -469,7 +483,14 @@
       group.children.forEach((child, i) => {
         child.geometry.translate(-center.x, -center.y, 0);
         child.geometry.scale(scale, -scale, 1);
-        child.position.z = i * 0.02; // offset each layer to prevent z-fighting
+        if (i === 0) {
+          child.position.z = 0;
+        } else {
+          // inset: push layer 2 back into base; raised: push forward
+          child.position.z = layer2Style === 'inset'
+            ? currentDepth * 0.3   // sits inside the base
+            : currentDepth * 0.5;  // sits on top of base
+        }
       });
 
       const bbox2 = new THREE.Box3().setFromObject(group);
@@ -602,6 +623,11 @@
       layer1Color = e.target.value;
       if (mesh && mesh.isGroup) rebuildMesh();
     });
+    document.getElementById('layer2-style').addEventListener('change', e => {
+      layer2Style = e.target.value;
+      if (mesh && mesh.isGroup) rebuildMesh();
+    });
+
     document.getElementById('layer2-color').addEventListener('input', e => {
       layer2Color = e.target.value;
       if (mesh && mesh.isGroup) rebuildMesh();
