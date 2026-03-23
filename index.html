@@ -1784,9 +1784,14 @@
       // Per-frame composite: render → copy to offCanvas → draw caption
       function compositeFrame() {
         updateRecCam();
+        // For gradient: render transparent scene onto gradient background
+        if (bgMode === 'gradient') {
+          renderer.setClearColor(0x000000, 0);
+          renderer.clearColor();
+        }
         renderer.render(scene, recCam);
 
-        // bg fill for caption area
+        // 1. Fill background first (full canvas incl. caption area)
         if (bgMode === 'gradient') {
           drawGradientOnCtx(offCtx, W, H);
         } else {
@@ -1796,6 +1801,7 @@
           offCtx.fillStyle = bgHex;
           offCtx.fillRect(0, 0, W, H);
         }
+        // 2. Composite 3D render on top
         offCtx.drawImage(renderer.domElement, 0, 0, W, renderH);
 
         if (hasCaption) {
@@ -1859,6 +1865,7 @@
         };
 
         // Restore renderer & scene
+        renderer.setClearColor(0x000000, 1); // restore opaque clear
         scene.background = savedBg || new THREE.Color(0xe8e7e3);
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(savedW, savedH);
