@@ -258,13 +258,20 @@
         <select id="env-select">
           <option value="none">None</option>
           <option value="studio" selected>Studio</option>
+          <option value="custom">Custom HDR</option>
         </select>
+      </div>
+      <input type="file" id="hdr-file-input" accept=".hdr" style="display:none" />
+      <div id="hdr-upload-row" class="upload-row" style="display:none;margin-top:8px">
+        <button class="btn btn-muted" id="btn-upload-hdr">upload .hdr</button>
+        <span class="upload-filename" id="hdr-filename">no file</span>
       </div>
     </div>
 
     <div class="panel-section">
       <div class="section-title">Export</div>
-      <button class="btn btn-wide" id="btn-download">&#8595; download png</button>
+      <button class="btn btn-wide" id="btn-download" style="margin-bottom:8px">&#8595; download png</button>
+      <button class="btn btn-wide" id="btn-download-glb">&#8595; download glb</button>
     </div>
   </div>
 
@@ -273,8 +280,12 @@
   <div class="modal-overlay" id="coffee-modal">
     <div class="modal-box" style="text-align:center">
       <button class="modal-close" data-modal="coffee-modal">&#10005;</button>
-      <h3>Buy me a coffee</h3>
-      <img src="qrcode.jpg" alt="QR Code" onerror="this.style.display='none'" />
+      <h3>Buy me a coffee / 请我喝杯咖啡</h3>
+      <p style="margin-bottom:12px;font-size:11px;color:#999">Badge It 完全免费 · 如果觉得有用，请扫码支持一下<br>Badge It is free · A coffee keeps it alive ☕</p>
+      <img src="qrcode.jpg" alt="支付宝收款码" onerror="this.style.display='none'" />
+      <div style="margin-top:16px">
+        <button class="btn btn-wide" id="btn-coffee-skip" style="font-size:10px;border-color:var(--border);color:var(--muted)">skip · 直接下载</button>
+      </div>
     </div>
   </div>
 
@@ -312,6 +323,7 @@
     import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
     // mergeVertices removed – using computeVertexNormals() directly
 
     let currentSVGString = null;
@@ -355,9 +367,15 @@
     pmremGenerator.compileEquirectangularShader();
     const roomEnvTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
     const environments = { none: null, studio: roomEnvTexture };
+    let customHdrTexture = null;
     function setEnvironment(key) {
-      scene.environment = environments[key] || null;
-      renderer.toneMappingExposure = key === 'none' ? 1.0 : 1.2;
+      if (key === 'custom' && customHdrTexture) {
+        scene.environment = customHdrTexture;
+        renderer.toneMappingExposure = 1.2;
+      } else {
+        scene.environment = environments[key] || null;
+        renderer.toneMappingExposure = key === 'none' ? 1.0 : 1.2;
+      }
     }
     setEnvironment('studio');
     // Load HDR from Three.js official CDN for reliable CORS-friendly access
@@ -743,10 +761,38 @@
     bindSlider('light-y', 'light-y-val', (v) => { dirLight.position.y = v; }, 1);
     bindSlider('light-z', 'light-z-val', (v) => { dirLight.position.z = v; }, 1);
 
+    // Modal helpers (declared early so GLB handler can use them)
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
     document.getElementById('env-select').addEventListener('change', (e) => {
-      setEnvironment(e.target.value);
+      const val = e.target.value;
+      const hdrRow = document.getElementById('hdr-upload-row');
+      hdrRow.style.display = val === 'custom' ? '' : 'none';
+      setEnvironment(val);
     });
 
+    // HDR upload
+    const hdrInput = document.getElementById('hdr-file-input');
+    document.getElementById('btn-upload-hdr').addEventListener('click', () => hdrInput.click());
+    hdrInput.addEventListener('change', () => {
+      const file = hdrInput.files[0];
+      if (!file) return;
+      document.getElementById('hdr-filename').textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const buffer = e.target.result;
+        const loader = new RGBELoader();
+        loader.setDataType(THREE.HalfFloatType);
+        const texture = loader.parse(buffer);
+        customHdrTexture = pmremGenerator.fromEquirectangular(texture).texture;
+        texture.dispose();
+        setEnvironment('custom');
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // PNG download
     document.getElementById('btn-download').addEventListener('click', () => {
       renderer.render(scene, camera);
       const a = document.createElement('a');
@@ -755,25 +801,66 @@
       a.click();
     });
 
-    // Modal helpers
-    function openModal(id) { document.getElementById(id).classList.add('open'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    // GLB download — show coffee modal first, skip/close triggers actual download
+    let pendingGlbDownload = false;
+    function doGlbDownload() {
+      const exporter = new GLTFExporter();
+      const mesh = scene.children.find(c => c.isGroup || c.isMesh);
+      if (!mesh) { alert('No model to export.'); return; }
+      exporter.parse(mesh, (gltf) => {
+        const blob = new Blob([gltf], { type: 'application/octet-stream' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'badge.glb';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }, (err) => { console.error('GLTFExporter error', err); }, { binary: true });
+    }
+    document.getElementById('btn-download-glb').addEventListener('click', () => {
+      pendingGlbDownload = true;
+      openModal('coffee-modal');
+    });
+    document.getElementById('btn-coffee-skip').addEventListener('click', () => {
+      closeModal('coffee-modal');
+      if (pendingGlbDownload) { pendingGlbDownload = false; doGlbDownload(); }
+    });
 
-    document.getElementById('btn-coffee').addEventListener('click', () => openModal('coffee-modal'));
+    document.getElementById('btn-coffee').addEventListener('click', () => {
+      pendingGlbDownload = false; // normal coffee button, no pending download
+      openModal('coffee-modal');
+    });
     document.getElementById('btn-help').addEventListener('click', () => openModal('help-modal'));
     document.getElementById('btn-about').addEventListener('click', () => openModal('about-modal'));
 
     document.querySelectorAll('.modal-close').forEach(btn => {
-      btn.addEventListener('click', () => closeModal(btn.dataset.modal));
+      btn.addEventListener('click', () => {
+        closeModal(btn.dataset.modal);
+        // If closing coffee modal with X and there's a pending GLB download, trigger it
+        if (btn.dataset.modal === 'coffee-modal' && pendingGlbDownload) {
+          pendingGlbDownload = false;
+          doGlbDownload();
+        }
+      });
     });
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) overlay.classList.remove('open');
+        if (e.target === overlay) {
+          overlay.classList.remove('open');
+          if (overlay.id === 'coffee-modal' && pendingGlbDownload) {
+            pendingGlbDownload = false;
+            doGlbDownload();
+          }
+        }
       });
     });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        const wasCoffeeOpen = document.getElementById('coffee-modal').classList.contains('open');
         document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+        if (wasCoffeeOpen && pendingGlbDownload) {
+          pendingGlbDownload = false;
+          doGlbDownload();
+        }
       }
     });
 
