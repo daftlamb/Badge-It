@@ -505,7 +505,8 @@
       // bevel values converted to SVG coordinate space
       const svgBevelSize = currentBevelSize / scale;
       const svgBevelThickness = currentBevelThickness / scale;
-      const svgDepth = currentDepth / scale;
+      // depth: geometry Z is NOT scaled (scale() only affects XY), so depth = currentDepth directly
+      const svgDepth = currentDepth;
 
       paths.forEach((path) => {
         const shapes = SVGLoader.createShapes(path);
@@ -514,7 +515,7 @@
         const isBase = group.children.length === 0;
         const color = isBase ? layer1Color : layer2Color;
 
-        const pathDepth = isBase ? svgDepth : svgDepth * layer2DepthRatio;
+        const pathDepth = isBase ? currentDepth : currentDepth * layer2DepthRatio;
         let geometry = new THREE.ExtrudeGeometry(shapes, {
           depth: pathDepth, bevelEnabled,
           bevelThickness: svgBevelThickness, bevelSize: svgBevelSize,
