@@ -190,6 +190,17 @@
     .modal-close { position: absolute; top: 8px; right: 12px; font-size: 16px; cursor: pointer; color: var(--muted); background: none; border: none; font-family: var(--font); }
     .modal-close:hover { color: var(--text); }
     .hidden { display: none !important; }
+
+    .slider-val-input {
+      font-family: var(--font); font-size: 10px; color: var(--text);
+      background: transparent; border: none; border-bottom: 1px solid var(--border);
+      width: 40px; text-align: right; padding: 0 2px; outline: none;
+      -moz-appearance: textfield;
+    }
+    .slider-val-input::-webkit-inner-spin-button,
+    .slider-val-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .slider-val-input:focus { border-bottom-color: var(--accent); }
+
   </style>
 </head>
 <body>
@@ -229,7 +240,7 @@
       <div class="slider-row">
         <span class="slider-label">depth</span>
         <input type="range" id="depth" min="0.05" max="0.5" step="0.01" value="0.15" />
-        <span class="slider-val" id="depth-val">0.15</span>
+        <input type="number" class="slider-val-input" id="depth-val" value="0.15" step="any" />
       </div>
       <div class="toggle-row">
         <span class="toggle-label">bevel</span>
@@ -243,12 +254,12 @@
         <div class="slider-row">
           <span class="slider-label">thickness</span>
           <input type="range" id="bevel-thickness" min="0.01" max="1.0" step="0.01" value="0.3" />
-          <span class="slider-val" id="bevel-thickness-val">0.300</span>
+          <input type="number" class="slider-val-input" id="bevel-thickness-val" value="0.300" step="any" />
         </div>
         <div class="slider-row">
           <span class="slider-label">size</span>
           <input type="range" id="bevel-size" min="0.01" max="0.8" step="0.01" value="0.25" />
-          <span class="slider-val" id="bevel-size-val">0.250</span>
+          <input type="number" class="slider-val-input" id="bevel-size-val" value="0.250" step="any" />
         </div>
         <div class="field" id="bevel-type-wrap">
           <label class="section-label">bevel type</label>
@@ -299,12 +310,12 @@
       <div class="slider-row">
         <span class="slider-label">metalness</span>
         <input type="range" id="metalness" min="0" max="1" step="0.01" value="0.9" />
-        <span class="slider-val" id="metalness-val">0.90</span>
+        <input type="number" class="slider-val-input" id="metalness-val" value="0.90" step="any" />
       </div>
       <div class="slider-row">
         <span class="slider-label">roughness</span>
         <input type="range" id="roughness" min="0" max="1" step="0.01" value="0.15" />
-        <span class="slider-val" id="roughness-val">0.15</span>
+        <input type="number" class="slider-val-input" id="roughness-val" value="0.15" step="any" />
       </div>
       <div class="color-row">
         <span class="color-label">color</span>
@@ -335,7 +346,7 @@
       <div class="slider-row" id="normalmap-scale-row" style="display:none">
         <span class="slider-label">nm scale</span>
         <input type="range" id="normalmap-scale" min="0.1" max="5" step="0.1" value="1" />
-        <span class="slider-val" id="normalmap-scale-val">1.0</span>
+        <input type="number" class="slider-val-input" id="normalmap-scale-val" value="1.0" step="any" />
       </div>
     </div>
 
@@ -344,27 +355,27 @@
       <div class="slider-row">
         <span class="slider-label">ambient</span>
         <input type="range" id="ambient-intensity" min="0" max="2" step="0.05" value="0.3" />
-        <span class="slider-val" id="ambient-val">0.30</span>
+        <input type="number" class="slider-val-input" id="ambient-val" value="0.30" step="any" />
       </div>
       <div class="slider-row">
         <span class="slider-label">intensity</span>
         <input type="range" id="dir-intensity" min="0" max="3" step="0.05" value="1.5" />
-        <span class="slider-val" id="dir-val">1.50</span>
+        <input type="number" class="slider-val-input" id="dir-val" value="1.50" step="any" />
       </div>
       <div class="slider-row">
         <span class="slider-label">light X</span>
         <input type="range" id="light-x" min="-3" max="3" step="0.1" value="1" />
-        <span class="slider-val" id="light-x-val">1.0</span>
+        <input type="number" class="slider-val-input" id="light-x-val" value="1.0" step="any" />
       </div>
       <div class="slider-row">
         <span class="slider-label">light Y</span>
         <input type="range" id="light-y" min="-3" max="3" step="0.1" value="2" />
-        <span class="slider-val" id="light-y-val">2.0</span>
+        <input type="number" class="slider-val-input" id="light-y-val" value="2.0" step="any" />
       </div>
       <div class="slider-row">
         <span class="slider-label">light Z</span>
         <input type="range" id="light-z" min="-3" max="3" step="0.1" value="1" />
-        <span class="slider-val" id="light-z-val">1.0</span>
+        <input type="number" class="slider-val-input" id="light-z-val" value="1.0" step="any" />
       </div>
       <div class="field" style="margin-top:10px">
         <label class="section-label">environment</label>
@@ -468,7 +479,7 @@
         <div class="slider-row">
           <span class="slider-label">font size</span>
           <input type="range" id="caption-size" min="10" max="72" step="1" value="24" />
-          <span class="slider-val" id="caption-size-val">24</span>
+          <input type="number" class="slider-val-input" id="caption-size-val" value="24" step="any" />
         </div>
         <div class="color-row" style="margin-top:0">
           <span class="color-label">color</span>
@@ -844,6 +855,11 @@
       if (!obj) return;
       mesh = obj;
       scene.add(mesh);
+      // Auto-center orbit target on mesh
+      const bbox = new THREE.Box3().setFromObject(mesh);
+      const center = bbox.getCenter(new THREE.Vector3());
+      controls.target.copy(center);
+      controls.update();
       schedulePreview();
     }
 
@@ -1014,11 +1030,26 @@
     function bindSlider(id, valId, setter, digits = 2) {
       const slider = document.getElementById(id);
       const valEl = document.getElementById(valId);
+      // slider → input
       slider.addEventListener('input', () => {
         const v = parseFloat(slider.value);
-        valEl.textContent = fmt(v, digits);
+        if (valEl) {
+          if (valEl.tagName === 'INPUT') valEl.value = fmt(v, digits);
+          else valEl.textContent = fmt(v, digits);
+        }
         setter(v);
       });
+      // input → slider (if it's a number input)
+      if (valEl && valEl.tagName === 'INPUT') {
+        valEl.addEventListener('change', () => {
+          let v = parseFloat(valEl.value);
+          const min = parseFloat(slider.min), max = parseFloat(slider.max);
+          v = Math.max(min, Math.min(max, isNaN(v) ? parseFloat(slider.value) : v));
+          valEl.value = fmt(v, digits);
+          slider.value = v;
+          setter(v);
+        });
+      }
     }
 
     // SVG Upload
@@ -1405,7 +1436,13 @@
       schedulePreview();
     });
     document.getElementById('caption-size').addEventListener('input', (e) => {
-      document.getElementById('caption-size-val').textContent = e.target.value;
+      document.getElementById('caption-size-val').value = e.target.value;
+      schedulePreview();
+    });
+    document.getElementById('caption-size-val').addEventListener('change', (e) => {
+      let v = Math.max(10, Math.min(72, parseInt(e.target.value) || 24));
+      e.target.value = v;
+      document.getElementById('caption-size').value = v;
       schedulePreview();
     });
     document.getElementById('caption-color').addEventListener('input', schedulePreview);
@@ -1654,11 +1691,30 @@
 
       // Enable auto-rotate
       const wasRotating = autoRotate;
-      autoRotate = true;
       controls.enabled = false;
+
+      // Recording camera orbits around mesh center — no mesh.rotation (avoids stretch artifacts)
+      let recAngle = 0;
+      const recCenter = bsphere.center.clone();
+      const recDist = r * 4 + 2;
+      // Project camera's initial elevation
+      const camDirNorm = camera.position.clone().sub(controls.target).normalize();
+      const recElevation = Math.asin(Math.max(-1, Math.min(1, camDirNorm.y)));
+
+      function updateRecCam() {
+        recAngle += AUTO_ROTATE_SPEED;
+        recCam.position.set(
+          recCenter.x + Math.cos(recAngle) * Math.cos(recElevation) * recDist,
+          recCenter.y + Math.sin(recElevation) * recDist,
+          recCenter.z + Math.sin(recAngle) * Math.cos(recElevation) * recDist
+        );
+        recCam.lookAt(recCenter);
+        recCam.updateProjectionMatrix();
+      }
 
       // Per-frame composite: render → copy to offCanvas → draw caption
       function compositeFrame() {
+        updateRecCam();
         renderer.render(scene, recCam);
 
         // bg fill for caption area
@@ -1689,12 +1745,10 @@
         }
       }
 
-      // Patch animate to also composite each frame
-      const origAnimate = animating;
+      // Record loop — independent of main animate
       let frameLoopActive = true;
       function recordLoop() {
         if (!frameLoopActive) return;
-        if (autoRotate && mesh) mesh.rotation.y += AUTO_ROTATE_SPEED;
         compositeFrame();
         requestAnimationFrame(recordLoop);
       }
@@ -1740,7 +1794,7 @@
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(savedW, savedH);
         autoRotate = wasRotating;
-        controls.enabled = !wasRotating;
+        controls.enabled = true;
         document.getElementById('auto-rotate-toggle').checked = wasRotating;
         animating = true; animate(); // restart normal loop
 
