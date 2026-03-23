@@ -502,11 +502,10 @@
       const maxDim = Math.max(svgW, svgH);
       const scale = 2.0 / maxDim;
 
-      // bevel values converted to SVG coordinate space
+      // All values in world space — Z is not scaled
       const svgBevelSize = currentBevelSize / scale;
       const svgBevelThickness = currentBevelThickness / scale;
-      // depth also needs to be in SVG space (geometry Z gets scaled by scale later)
-      const svgDepth = currentDepth / scale;
+      const svgDepth = currentDepth;
       const svgDepth = currentDepth;
 
       paths.forEach((path) => {
@@ -541,7 +540,7 @@
 
       group.children.forEach((child, i) => {
         child.geometry.translate(-center.x, -center.y, 0);
-        child.geometry.scale(scale, -scale, scale);  // scale Z too so depth matches world units
+        child.geometry.scale(scale, -scale, 1);  // Z not scaled: depth stays in world units
         child.position.z = i === 0 ? 0 : layer2ZOffset;
       });
 
