@@ -280,6 +280,7 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
     let currentSVGString = null;
     let currentShape = 'circle';
@@ -407,11 +408,14 @@
           color = fillColor;
         }
 
-        const geometry = new THREE.ExtrudeGeometry(shapes, {
+        let geometry = new THREE.ExtrudeGeometry(shapes, {
           depth: currentDepth, bevelEnabled,
           bevelThickness: currentBevelThickness, bevelSize: currentBevelSize,
           bevelSegments: currentBevelSegments,
         });
+        // Smooth side normals
+        geometry = mergeVertices(geometry);
+        geometry.computeVertexNormals();
         const material = new THREE.MeshStandardMaterial({
           color: new THREE.Color(color),
           metalness: currentMetalness, roughness: currentRoughness,
