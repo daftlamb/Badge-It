@@ -180,6 +180,8 @@
       <div style="margin-bottom:10px">
         <select id="material-preset">
           <option value="metal">Metal</option>
+          <option value="chrome">Chrome</option>
+          <option value="gold">Gold</option>
           <option value="enamel">Enamel</option>
           <option value="matte">Matte</option>
           <option value="plastic">Plastic</option>
@@ -303,9 +305,11 @@
 
     const MATERIAL_PRESETS = {
       metal:   { metalness: 0.9,  roughness: 0.15 },
+      chrome:  { metalness: 1.0,  roughness: 0.0  },
       enamel:  { metalness: 0.2,  roughness: 0.05 },
       matte:   { metalness: 0.0,  roughness: 0.85 },
       plastic: { metalness: 0.05, roughness: 0.4  },
+      gold:    { metalness: 1.0,  roughness: 0.1  },
     };
 
     const canvasArea = document.getElementById('canvas-area');
