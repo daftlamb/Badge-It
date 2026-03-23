@@ -300,7 +300,7 @@
     };
 
     const canvasArea = document.getElementById('canvas-area');
-    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, logarithmicDepthBuffer: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(canvasArea.clientWidth, canvasArea.clientHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -428,9 +428,10 @@
       const maxDim = Math.max(size.x, size.y);
       const scale = 2.0 / maxDim;
 
-      group.children.forEach(child => {
+      group.children.forEach((child, i) => {
         child.geometry.translate(-center.x, -center.y, 0);
         child.geometry.scale(scale, -scale, 1);
+        child.position.z = i * 0.02; // offset each layer to prevent z-fighting
       });
 
       const bbox2 = new THREE.Box3().setFromObject(group);
