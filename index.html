@@ -1733,9 +1733,11 @@
       const bsphere = new THREE.Sphere();
       bbox.getBoundingSphere(bsphere);
       const r = bsphere.radius * (1 + padding);
+      // Correct ortho frustum: vertical = r, horizontal = r * aspect
       const recCam = new THREE.OrthographicCamera(-r*aspect, r*aspect, r, -r, 0.001, 1000);
-      const camDir = camera.position.clone().normalize();
-      recCam.position.copy(bsphere.center).addScaledVector(camDir, r*4+2);
+      // Use current camera direction for initial angle
+      const camDirNorm = camera.position.clone().sub(controls.target).normalize();
+      recCam.position.copy(bsphere.center).addScaledVector(camDirNorm, r*4+2);
       recCam.lookAt(bsphere.center);
       recCam.updateProjectionMatrix();
 
@@ -1752,8 +1754,7 @@
       let recAngle = 0;
       const recCenter = bsphere.center.clone();
       const recDist = r * 4 + 2;
-      // Project camera's initial elevation
-      const camDirNorm = camera.position.clone().sub(controls.target).normalize();
+      // Use already-computed camDirNorm for elevation
       const recElevation = Math.asin(Math.max(-1, Math.min(1, camDirNorm.y)));
 
       function updateRecCam() {
