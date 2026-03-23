@@ -299,9 +299,63 @@
     </div>
 
     <div class="panel-section">
-      <div class="section-title">Export</div>
-      <button class="btn btn-wide" id="btn-download" style="margin-bottom:8px">&#8595; download png</button>
-      <button class="btn btn-wide" id="btn-download-glb">&#8595; download glb</button>
+      <div class="section-title">Canvas Export</div>
+
+      <div class="field">
+        <label class="section-label">size</label>
+        <select id="export-size">
+          <option value="512">512 × 512</option>
+          <option value="1024" selected>1024 × 1024</option>
+          <option value="2048">2048 × 2048</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </div>
+      <div id="custom-size-row" class="slider-row" style="display:none;gap:4px;align-items:center">
+        <input type="number" id="custom-w" value="1200" min="64" max="4096" style="font-family:var(--font);font-size:10px;width:64px;padding:4px 6px;border:1px solid var(--border);background:var(--bg);color:var(--text)" />
+        <span style="font-size:10px;color:var(--muted)">×</span>
+        <input type="number" id="custom-h" value="1200" min="64" max="4096" style="font-family:var(--font);font-size:10px;width:64px;padding:4px 6px;border:1px solid var(--border);background:var(--bg);color:var(--text)" />
+        <span style="font-size:10px;color:var(--muted)">px</span>
+      </div>
+
+      <div class="field" style="margin-top:8px">
+        <label class="section-label">background</label>
+        <select id="export-bg">
+          <option value="transparent">Transparent</option>
+          <option value="scene" selected>Scene color</option>
+          <option value="color">Custom color</option>
+        </select>
+      </div>
+      <div id="export-bg-color-row" class="color-row" style="display:none;margin-top:6px">
+        <span class="color-label">bg color</span>
+        <input type="color" id="export-bg-color" value="#ffffff" />
+      </div>
+
+      <div class="slider-row" style="margin-top:8px">
+        <span class="slider-label">padding</span>
+        <input type="range" id="export-padding" min="0" max="0.4" step="0.01" value="0.1" />
+        <span class="slider-val" id="export-padding-val">10%</span>
+      </div>
+
+      <div class="field" style="margin-top:2px">
+        <label class="section-label">caption text</label>
+        <input type="text" id="export-caption" placeholder="e.g. Badge It · badgeitapp.com" style="font-family:var(--font);font-size:10px;width:100%;padding:5px 8px;border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none" />
+      </div>
+      <div id="caption-options" style="margin-top:6px">
+        <div class="slider-row">
+          <span class="slider-label">font size</span>
+          <input type="range" id="caption-size" min="10" max="72" step="1" value="24" />
+          <span class="slider-val" id="caption-size-val">24</span>
+        </div>
+        <div class="color-row" style="margin-top:0">
+          <span class="color-label">color</span>
+          <input type="color" id="caption-color" value="#999999" />
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn" style="flex:1;padding:7px 0;font-size:11px" id="btn-download">&#8595; png</button>
+        <button class="btn" style="flex:1;padding:7px 0;font-size:11px" id="btn-download-glb">&#8595; glb</button>
+      </div>
     </div>
   </div><!-- /panel -->
 
@@ -828,14 +882,109 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // PNG download
-    document.getElementById('btn-download').addEventListener('click', () => {
-      renderer.render(scene, camera);
-      const a = document.createElement('a');
-      a.download = 'badge.png';
-      a.href = renderer.domElement.toDataURL('image/png');
-      a.click();
+    // Export panel controls
+    document.getElementById('export-size').addEventListener('change', (e) => {
+      document.getElementById('custom-size-row').style.display = e.target.value === 'custom' ? '' : 'none';
     });
+    document.getElementById('export-bg').addEventListener('change', (e) => {
+      document.getElementById('export-bg-color-row').style.display = e.target.value === 'color' ? '' : 'none';
+    });
+    document.getElementById('export-padding').addEventListener('input', (e) => {
+      document.getElementById('export-padding-val').textContent = Math.round(e.target.value * 100) + '%';
+    });
+    document.getElementById('caption-size').addEventListener('input', (e) => {
+      document.getElementById('caption-size-val').textContent = e.target.value;
+    });
+
+    // Offscreen PNG render
+    function doCanvasExport() {
+      const sizeEl = document.getElementById('export-size');
+      let W, H;
+      if (sizeEl.value === 'custom') {
+        W = parseInt(document.getElementById('custom-w').value) || 1024;
+        H = parseInt(document.getElementById('custom-h').value) || 1024;
+      } else {
+        W = H = parseInt(sizeEl.value);
+      }
+      const bgMode = document.getElementById('export-bg').value;
+      const padding = parseFloat(document.getElementById('export-padding').value);
+      const caption = document.getElementById('export-caption').value.trim();
+      const captionSize = parseInt(document.getElementById('caption-size').value);
+      const captionColor = document.getElementById('caption-color').value;
+
+      // caption area height
+      const captionH = caption ? Math.round(captionSize * 2.2) : 0;
+      const renderH = H - captionH;
+
+      // offscreen renderer
+      const offRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: bgMode === 'transparent', preserveDrawingBuffer: true, logarithmicDepthBuffer: true });
+      offRenderer.setPixelRatio(1);
+      offRenderer.setSize(W, renderH);
+      offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+      offRenderer.toneMappingExposure = renderer.toneMappingExposure;
+      offRenderer.outputColorSpace = THREE.SRGBColorSpace;
+
+      if (bgMode === 'transparent') {
+        offRenderer.setClearColor(0x000000, 0);
+      } else if (bgMode === 'color') {
+        offRenderer.setClearColor(new THREE.Color(document.getElementById('export-bg-color').value), 1);
+      } else {
+        offRenderer.setClearColor(scene.background, 1);
+      }
+
+      // offscreen camera matching aspect ratio with padding
+      const aspect = W / renderH;
+      const bbox = new THREE.Box3().setFromObject(scene);
+      const bsphere = new THREE.Sphere();
+      bbox.getBoundingSphere(bsphere);
+      const r = bsphere.radius * (1 + padding);
+      const offCam = new THREE.OrthographicCamera(-r * aspect, r * aspect, r, -r, 0.001, 1000);
+      offCam.position.copy(camera.position).normalize().multiplyScalar(r * 3 + 5);
+      offCam.lookAt(bsphere.center);
+
+      // apply current environment
+      const offScene = scene;
+      offRenderer.render(offScene, offCam);
+
+      // compose final canvas (render + caption)
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = W;
+      finalCanvas.height = H;
+      const ctx = finalCanvas.getContext('2d');
+
+      // background fill for caption area
+      if (bgMode !== 'transparent') {
+        const bgColor = bgMode === 'color' ? document.getElementById('export-bg-color').value : '#' + scene.background.getHexString();
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      // draw render
+      ctx.drawImage(offRenderer.domElement, 0, 0, W, renderH);
+
+      // draw caption
+      if (caption) {
+        const fontPx = captionSize;
+        ctx.font = `${fontPx}px "Courier New", monospace`;
+        ctx.fillStyle = captionColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(caption, W / 2, renderH + captionH / 2);
+      }
+
+      offRenderer.dispose();
+
+      finalCanvas.toBlob((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'badge-' + W + 'x' + H + '.png';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }, 'image/png');
+    }
+
+    // PNG download — no paywall, direct
+    document.getElementById('btn-download').addEventListener('click', doCanvasExport);
 
     // GLB download — show coffee modal first, skip/close triggers actual download
     let pendingGlbDownload = false;
