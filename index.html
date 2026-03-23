@@ -87,6 +87,71 @@
     .color-hex { font-size: 10px; color: var(--text); }
     #canvas-area { background: var(--canvas-bg); position: relative; overflow: hidden; }
     #canvas-area canvas { display: block; width: 100% !important; height: 100% !important; }
+
+    /* ── Mobile ── */
+    @media (max-width: 767px) {
+      body {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+        height: 100dvh;
+        overflow: hidden;
+      }
+      header { padding: 0 12px; }
+      .logo { font-size: 12px; }
+      #canvas-area {
+        grid-row: 2;
+        min-height: 0;
+      }
+      #panel {
+        grid-row: 3;
+        border-right: none;
+        border-top: 1px solid var(--border);
+        height: 46vh;
+        max-height: 46vh;
+        overflow-y: auto;
+        /* horizontal scroll for sections */
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        gap: 0;
+      }
+      .panel-section {
+        flex: 0 0 260px;
+        scroll-snap-align: start;
+        border-bottom: none;
+        border-right: 1px solid var(--border);
+        overflow-y: auto;
+        max-height: 100%;
+        padding: 12px 14px;
+      }
+      #layer-colors-wrap {
+        flex: 0 0 260px;
+        scroll-snap-align: start;
+      }
+      /* Panel scroll indicator dots */
+      #panel-dots {
+        display: flex;
+        justify-content: center;
+        gap: 5px;
+        padding: 6px 0 4px;
+        background: var(--panel);
+        border-top: 1px solid var(--border);
+      }
+      .panel-dot {
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: var(--border);
+        transition: background 0.2s;
+      }
+      .panel-dot.active { background: var(--accent); }
+    }
+    @media (min-width: 768px) {
+      #panel-dots { display: none; }
+    }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
     .modal-overlay.open { display: flex; }
     .modal-box { background: #fff; border: 1px solid var(--border); padding: 24px; max-width: 360px; width: 90%; position: relative; }
@@ -273,7 +338,10 @@
       <button class="btn btn-wide" id="btn-download" style="margin-bottom:8px">&#8595; download png</button>
       <button class="btn btn-wide" id="btn-download-glb">&#8595; download glb</button>
     </div>
-  </div>
+  </div><!-- /panel -->
+
+  <!-- Mobile panel scroll dots -->
+  <div id="panel-dots"></div>
 
   <div id="canvas-area"></div>
 
@@ -302,6 +370,9 @@
       <p><strong>Export / 导出</strong><br>
       Click "download png" to save a PNG screenshot.<br>
       点击「download png」保存 PNG 截图。</p>
+      <p><strong>Mobile / 手机端</strong><br>
+      Swipe the bottom panel left/right to switch sections.<br>
+      底部面板左右滑动切换功能区块。</p>
     </div>
   </div>
 
@@ -866,6 +937,31 @@
 
     // Initial build
     rebuildMesh();
+
+    // Mobile panel dots
+    (function() {
+      const panel = document.getElementById('panel');
+      const dotsWrap = document.getElementById('panel-dots');
+      function initDots() {
+        if (window.innerWidth >= 768) { dotsWrap.innerHTML = ''; return; }
+        const sections = panel.querySelectorAll('.panel-section, #layer-colors-wrap');
+        const visible = [...sections].filter(s => s.style.display !== 'none');
+        dotsWrap.innerHTML = '';
+        visible.forEach((_, i) => {
+          const d = document.createElement('div');
+          d.className = 'panel-dot' + (i === 0 ? ' active' : '');
+          dotsWrap.appendChild(d);
+        });
+        panel.addEventListener('scroll', () => {
+          const dots = dotsWrap.querySelectorAll('.panel-dot');
+          const sectionW = 260;
+          const idx = Math.round(panel.scrollLeft / sectionW);
+          dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+        }, { passive: true });
+      }
+      initDots();
+      window.addEventListener('resize', initDots);
+    })();
   </script>
 </body>
 </html>
