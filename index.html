@@ -418,32 +418,60 @@
       mesh = null;
     }
 
+    function makePolygonShape(sides, radius) {
+      const s = new THREE.Shape();
+      for (let i = 0; i < sides; i++) {
+        const angle = (i / sides) * Math.PI * 2 - Math.PI / 2;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        i === 0 ? s.moveTo(x, y) : s.lineTo(x, y);
+      }
+      s.closePath();
+      return s;
+    }
+
+    function makeExtrudeGeo(shape) {
+      const geo = new THREE.ExtrudeGeometry(shape, {
+        depth: currentDepth, bevelEnabled,
+        bevelThickness: currentBevelThickness, bevelSize: currentBevelSize,
+        bevelSegments: currentBevelSegments, curveSegments: 64,
+      });
+      geo.computeVertexNormals();
+      geo.computeBoundingBox();
+      const bb = geo.boundingBox;
+      geo.translate(-(bb.max.x + bb.min.x)/2, -(bb.max.y + bb.min.y)/2, -currentDepth/2);
+      return geo;
+    }
+
     function buildPresetGeometry(shapeName) {
-      let geo;
       switch (shapeName) {
-        case 'hexagon': geo = new THREE.CylinderGeometry(1, 1, currentDepth, 6); break;
-        case 'square':  geo = new THREE.BoxGeometry(1.8, 1.8, currentDepth); break;
-        case 'pentagon': geo = new THREE.CylinderGeometry(1, 1, currentDepth, 5); break;
+        case 'circle': {
+          const s = new THREE.Shape();
+          s.absarc(0, 0, 1, 0, Math.PI * 2, false);
+          return makeExtrudeGeo(s);
+        }
+        case 'hexagon': return makeExtrudeGeo(makePolygonShape(6, 1));
+        case 'pentagon': return makeExtrudeGeo(makePolygonShape(5, 1));
+        case 'square': {
+          const s = new THREE.Shape();
+          s.moveTo(-0.9, -0.9); s.lineTo(0.9, -0.9);
+          s.lineTo(0.9, 0.9); s.lineTo(-0.9, 0.9); s.closePath();
+          return makeExtrudeGeo(s);
+        }
         case 'shield': {
           const s = new THREE.Shape();
           s.moveTo(0, 1.2); s.lineTo(1.0, 0.8); s.lineTo(1.0, -0.2);
           s.quadraticCurveTo(0.5, -1.0, 0, -1.2);
           s.quadraticCurveTo(-0.5, -1.0, -1.0, -0.2);
           s.lineTo(-1.0, 0.8); s.closePath();
-          geo = new THREE.ExtrudeGeometry(s, {
-            depth: currentDepth, bevelEnabled,
-            bevelThickness: currentBevelThickness, bevelSize: currentBevelSize,
-            bevelSegments: currentBevelSegments,
-          });
-          geo.computeBoundingBox();
-          const bb = geo.boundingBox;
-          geo.translate(-(bb.max.x + bb.min.x)/2, -(bb.max.y + bb.min.y)/2, -currentDepth/2);
-          return geo;
+          return makeExtrudeGeo(s);
         }
-        default: geo = new THREE.CylinderGeometry(1, 1, currentDepth, 64); break;
+        default: {
+          const s = new THREE.Shape();
+          s.absarc(0, 0, 1, 0, Math.PI * 2, false);
+          return makeExtrudeGeo(s);
+        }
       }
-      geo.rotateX(Math.PI / 2);
-      return geo;
     }
 
     function buildSVGGeometry(svgString) {
