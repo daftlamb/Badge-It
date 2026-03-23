@@ -509,8 +509,16 @@
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xe8e7e3);
 
-    const camera = new THREE.PerspectiveCamera(45, canvasArea.clientWidth / canvasArea.clientHeight, 0.01, 100);
-    camera.position.set(0, 0, 5);
+    const orthoSize = 2.5;
+    const aspect = canvasArea.clientWidth / canvasArea.clientHeight;
+    const camera = new THREE.OrthographicCamera(
+      -orthoSize * aspect, orthoSize * aspect,
+      orthoSize, -orthoSize,
+      0.01, 100
+    );
+    // 等轴测视角：从右上前方看
+    camera.position.set(3, 2.5, 3);
+    camera.lookAt(0, 0, 0);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enablePan = false;
@@ -666,7 +674,9 @@
     function onResize() {
       const w = canvasArea.clientWidth;
       const h = canvasArea.clientHeight;
-      camera.aspect = w / h;
+      const newAspect = w / h;
+      camera.left = -orthoSize * newAspect;
+      camera.right = orthoSize * newAspect;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     }
