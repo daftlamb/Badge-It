@@ -545,8 +545,8 @@
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn" style="flex:1;padding:7px 0;font-size:11px" id="btn-download">&#8595; png</button>
         <button class="btn" style="flex:1;padding:7px 0;font-size:11px" id="btn-download-glb">&#8595; glb</button>
-        <button class="btn" style="flex:1 0 100%;padding:7px 0;font-size:11px;margin-top:4px" id="btn-record-video">&#9654; record video</button>
       </div>
+      <p style="margin-top:8px;font-size:10px;color:var(--muted);line-height:1.5">Use your system screen recorder to capture the 3D preview.</p>
     </div>
   </div><!-- /panel -->
 
@@ -1848,9 +1848,6 @@
 
     // PNG download — no paywall, direct
     document.getElementById('btn-download').addEventListener('click', doCanvasExport);
-    document.getElementById('btn-record-video').addEventListener('click', () => {
-      alert('Use your system screen recorder to capture the 3D preview.\n\nMac: Cmd+Shift+5\nWindows: Win+G\niPhone/Android: Control Center');
-    });
 
     // GLB download — show coffee modal first, skip/close triggers actual download
     let pendingGlbDownload = false;
