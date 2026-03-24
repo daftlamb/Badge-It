@@ -1895,17 +1895,18 @@
       else if (bgMode === 'gradient') scene.background = null;
       else if (bgMode === 'transparent') scene.background = new THREE.Color(0xe8e7e3);
 
-      // Use main renderer — same WebGL context preserves env/matcap/HDR
-      // setSize with updateStyle=false so viewport layout doesn't jump
-      const recCanvas = renderer.domElement;
-      const savedW = canvasArea.clientWidth, savedH = canvasArea.clientHeight;
-      renderer.setPixelRatio(1);
-      renderer.setSize(W, renderH, false); // false = don't update CSS → no layout jump
+      // Render into a RenderTarget — main renderer context (env/matcap intact), no CSS/size changes
+      const recTarget = new THREE.WebGLRenderTarget(W, renderH, {
+        minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
+        format: THREE.RGBAFormat, type: THREE.UnsignedByteType,
+      });
+      const pixelBuffer = new Uint8Array(W * renderH * 4);
 
       // Build offscreen composite canvas (this is what we record)
       const offCanvas = document.createElement('canvas');
       offCanvas.width = W; offCanvas.height = H;
       const offCtx = offCanvas.getContext('2d');
+      const frameImageData = offCtx.createImageData(W, renderH);
 
       // Build recording camera
       const aspect = W / renderH;
@@ -1941,13 +1942,23 @@
         recCam.updateProjectionMatrix();
       }
 
-      // Per-frame composite: render → copy to offCanvas → draw caption
+      // Per-frame composite: render to target → read pixels → draw to offCanvas
       function compositeFrame() {
         updateRecCam();
         if (bgMode === 'gradient') renderer.setClearColor(0x000000, 0);
+        // Render into RenderTarget (exact W×renderH, no CSS distortion, same context)
+        renderer.setRenderTarget(recTarget);
         renderer.render(scene, recCam);
+        renderer.setRenderTarget(null);
+        // Read pixels from RenderTarget (WebGL is Y-flipped, correct below)
+        renderer.readRenderTargetPixels(recTarget, 0, 0, W, renderH, pixelBuffer);
+        // Flip Y (WebGL origin is bottom-left, canvas is top-left)
+        for (let row = 0; row < renderH; row++) {
+          const src = (renderH - 1 - row) * W * 4;
+          frameImageData.data.set(pixelBuffer.subarray(src, src + W * 4), row * W * 4);
+        }
 
-        // 1. Fill background first (full canvas incl. caption area)
+        // 1. Fill background
         if (bgMode === 'gradient') {
           drawGradientOnCtx(offCtx, W, H);
         } else {
@@ -1957,8 +1968,8 @@
           offCtx.fillStyle = bgHex;
           offCtx.fillRect(0, 0, W, H);
         }
-        // 2. Composite 3D render on top (recRenderer canvas is exactly W×renderH)
-        offCtx.drawImage(renderer.domElement, 0, 0, W, renderH);
+        // 2. Composite 3D render pixels on top
+        offCtx.putImageData(frameImageData, 0, 0);
 
         if (hasCaption) {
           offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle';
@@ -2021,11 +2032,9 @@
           openModal('coffee-modal');
         };
 
-        // Restore renderer size
-        recCanvas.style.width = '';
-        recCanvas.style.height = '';
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(savedW, savedH, false); // restore pixel size, keep CSS as-is
+        // Cleanup
+        recTarget.dispose();
+        renderer.setRenderTarget(null);
         if (bgMode === 'gradient') renderer.setClearColor(0x000000, 1);
         scene.background = savedBg || new THREE.Color(0xe8e7e3);
         autoRotate = wasRotating;
