@@ -1918,32 +1918,42 @@
       const bsphere = new THREE.Sphere();
       bbox.getBoundingSphere(bsphere);
       const r = bsphere.radius * (1 + padding);
-      const recCam = new THREE.OrthographicCamera(-r*aspect, r*aspect, r, -r, 0.001, 1000);
-      const camDirNorm = camera.position.clone().sub(controls.target).normalize();
-      recCam.position.copy(bsphere.center).addScaledVector(camDirNorm, r*4+2);
-      recCam.lookAt(bsphere.center);
-      recCam.updateProjectionMatrix();
 
-      // Enable auto-rotate
+      // Use the active viewport camera for recording — same position/orientation as user sees
+      const activeRecCam = usePerspective ? perspCam : camera;
+      // Save camera aspect, temporarily override for export ratio
+      const savedOrthoLeft   = camera.left,   savedOrthoRight = camera.right;
+      const savedOrthoTop    = camera.top,     savedOrthoBottom = camera.bottom;
+      const savedPerspAspect = perspCam ? perspCam.aspect : null;
+
+      // Adjust ortho camera to export aspect
+      const orthoSize = camera.top; // half-height
+      camera.left   = -orthoSize * aspect;
+      camera.right  =  orthoSize * aspect;
+      camera.updateProjectionMatrix();
+      if (perspCam) { perspCam.aspect = aspect; perspCam.updateProjectionMatrix(); }
+
+      // Enable auto-rotate for recording
       const wasRotating = autoRotate;
       controls.enabled = false;
 
-      // Recording camera orbits around mesh center — no mesh.rotation (avoids stretch artifacts)
-      let recAngle = 0;
-      const recCenter = bsphere.center.clone();
-      const recDist = r * 4 + 2;
-      // Use already-computed camDirNorm for elevation
+      // Orbit angle — start from current camera position
+      const camDirNorm = camera.position.clone().sub(controls.target).normalize();
+      const recCenter = controls.target.clone();
+      const recDist = camera.position.distanceTo(controls.target);
       const recElevation = Math.asin(Math.max(-1, Math.min(1, camDirNorm.y)));
+      let recAngle = Math.atan2(camDirNorm.z, camDirNorm.x);
 
       function updateRecCam() {
         recAngle += AUTO_ROTATE_SPEED;
-        recCam.position.set(
+        const pos = new THREE.Vector3(
           recCenter.x + Math.cos(recAngle) * Math.cos(recElevation) * recDist,
           recCenter.y + Math.sin(recElevation) * recDist,
           recCenter.z + Math.sin(recAngle) * Math.cos(recElevation) * recDist
         );
-        recCam.lookAt(recCenter);
-        recCam.updateProjectionMatrix();
+        camera.position.copy(pos);
+        camera.lookAt(recCenter);
+        if (perspCam) { perspCam.position.copy(pos); perspCam.lookAt(recCenter); }
       }
 
       // Per-frame composite: render to target → read pixels → draw to offCanvas
@@ -1952,7 +1962,7 @@
         if (bgMode === 'gradient') renderer.setClearColor(0x000000, 0);
         // Render into RenderTarget (exact W×renderH, no CSS distortion, same context)
         renderer.setRenderTarget(recTarget);
-        renderer.render(scene, recCam);
+        renderer.render(scene, activeRecCam);
         renderer.setRenderTarget(null);
         // Read pixels from RenderTarget (WebGL is Y-flipped, correct below)
         renderer.readRenderTargetPixels(recTarget, 0, 0, W, renderH, pixelBuffer);
@@ -2037,7 +2047,11 @@
           openModal('coffee-modal');
         };
 
-        // Cleanup
+        // Cleanup — restore camera aspect
+        camera.left = savedOrthoLeft; camera.right = savedOrthoRight;
+        camera.top  = savedOrthoTop;  camera.bottom = savedOrthoBottom;
+        camera.updateProjectionMatrix();
+        if (perspCam && savedPerspAspect !== null) { perspCam.aspect = savedPerspAspect; perspCam.updateProjectionMatrix(); }
         recTarget.dispose();
         renderer.setRenderTarget(null);
         if (bgMode === 'gradient') renderer.setClearColor(0x000000, 1);
