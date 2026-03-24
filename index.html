@@ -114,6 +114,7 @@
     .layer-color-dot { border-radius: 50% !important; overflow: hidden; }
     .color-hex { font-size: 10px; color: var(--text); }
     #canvas-area { background: var(--canvas-bg); position: relative; overflow: hidden; }
+    #canvas-area.fullscreen { position:fixed !important; inset:0 !important; z-index:8999 !important; width:100vw !important; height:100vh !important; }
     #canvas-area canvas { display: block; width: 100% !important; height: 100% !important; }
     #canvas-area canvas.recording { width: auto !important; height: auto !important; }
 
@@ -633,15 +634,14 @@
 
   <!-- Video preview modal -->
   <!-- Fullscreen preview overlay for screen recording -->
-  <div id="fs-preview" style="display:none;position:fixed;inset:0;z-index:9000;background:#000;flex-direction:column;align-items:center;justify-content:center">
-    <div id="fs-canvas-wrap" style="position:relative;flex:1;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden"></div>
+  <div id="fs-preview" style="display:none;position:fixed;inset:0;z-index:9000;pointer-events:none">
     <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);
-      color:#fff;font-size:11px;padding:5px 14px;border-radius:20px;letter-spacing:.06em;pointer-events:none">
+      color:#fff;font-size:11px;padding:5px 14px;border-radius:20px;letter-spacing:.06em;pointer-events:none;white-space:nowrap">
       use screen recording to capture · ESC to exit
     </div>
     <button id="btn-fs-exit" style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);
       background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);
-      border-radius:6px;padding:7px 22px;font-size:11px;cursor:pointer;letter-spacing:.06em">
+      border-radius:6px;padding:7px 22px;font-size:11px;cursor:pointer;letter-spacing:.06em;pointer-events:all">
       &#10005; exit preview
     </button>
   </div>
@@ -1889,7 +1889,6 @@
 
       const btn = document.getElementById('btn-record-video');
       const fsEl = document.getElementById('fs-preview');
-      const wrap = document.getElementById('fs-canvas-wrap');
 
       // Save state
       const wasRotating = autoRotate;
@@ -1900,31 +1899,41 @@
       const { bgMode } = p;
       if (bgMode === 'color') scene.background = new THREE.Color(document.getElementById('export-bg-color').value);
       else if (bgMode === 'gradient') scene.background = null;
-      // transparent: keep as-is
 
+      // Fullscreen canvas-area (no canvas move, just CSS)
+      canvasArea.classList.add('fullscreen');
+      // Resize renderer to fill viewport
+      renderer.setSize(window.innerWidth, window.innerHeight, false);
+      const fsAspect = window.innerWidth / window.innerHeight;
+      const orthoHalf = camera.top;
+      camera.left = -orthoHalf * fsAspect; camera.right = orthoHalf * fsAspect;
+      camera.updateProjectionMatrix();
+      if (perspCam) { perspCam.aspect = fsAspect; perspCam.updateProjectionMatrix(); }
+
+      // Show overlay UI (hints + exit button)
+      fsEl.style.display = 'block';
       // Start auto-rotate
       autoRotate = true;
       document.getElementById('auto-rotate-toggle').checked = true;
-
-      // Show fullscreen overlay
-      fsEl.style.display = 'flex';
       btn.textContent = '⏹ exit preview';
 
       function exitPreview() {
         fsPreviewActive = false;
+        canvasArea.classList.remove('fullscreen');
         fsEl.style.display = 'none';
         btn.textContent = '⛶ preview fullscreen';
         scene.background = savedBg || new THREE.Color(0xe8e7e3);
         autoRotate = wasRotating;
         document.getElementById('auto-rotate-toggle').checked = wasRotating;
+        // Restore renderer size
+        renderer.setSize(canvasArea.clientWidth, canvasArea.clientHeight, false);
+        const normAspect = canvasArea.clientWidth / canvasArea.clientHeight;
+        camera.left = -orthoHalf * normAspect; camera.right = orthoHalf * normAspect;
+        camera.updateProjectionMatrix();
+        if (perspCam) { perspCam.aspect = normAspect; perspCam.updateProjectionMatrix(); }
       }
 
       document.getElementById('btn-fs-exit').onclick = exitPreview;
-      document.addEventListener('keydown', function onEsc(e) {
-        if (e.key === 'Escape') { exitPreview(); document.removeEventListener('keydown', onEsc); }
-      }, { once: false });
-
-      // Re-attach so it only fires once per preview session
       document.addEventListener('keydown', function handler(e) {
         if (e.key === 'Escape' && fsPreviewActive) {
           exitPreview();
