@@ -539,6 +539,11 @@
       </div>
 
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-muted" style="flex:1;padding:7px 0;font-size:11px" id="btn-reset-view">&#8634; reset view</button>
+        <button class="btn btn-muted" style="flex:1;padding:7px 0;font-size:11px" id="btn-load-glb">&#8593; load glb</button>
+        <input type="file" id="glb-file-input" accept=".glb,.gltf" style="display:none" />
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn" style="flex:1;padding:7px 0;font-size:11px" id="btn-download">&#8595; png</button>
         <button class="btn" style="flex:1;padding:7px 0;font-size:11px" id="btn-download-glb">&#8595; glb</button>
       </div>
@@ -652,6 +657,7 @@
     import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
     import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -810,14 +816,17 @@
       }
     }
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
     dirLight.position.set(1, 2, 1);
     scene.add(dirLight);
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
-    fillLight.position.set(-1, -1, -1);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    fillLight.position.set(-1, 0.5, -1);
     scene.add(fillLight);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    rimLight.position.set(0, -1, -2);
+    scene.add(rimLight);
 
     const mat = new THREE.MeshStandardMaterial({
       color: new THREE.Color(currentColor),
@@ -1844,6 +1853,60 @@
 
     // PNG download — no paywall, direct
     document.getElementById('btn-download').addEventListener('click', doCanvasExport);
+
+    // Reset view button
+    document.getElementById('btn-reset-view').addEventListener('click', function() {
+      const defaultPos = new THREE.Vector3(3, 2.5, 3);
+      camera.position.copy(defaultPos);
+      camera.lookAt(0, 0, 0);
+      perspCam.position.copy(defaultPos);
+      perspCam.lookAt(0, 0, 0);
+      if (mesh) {
+        const bbox = new THREE.Box3().setFromObject(mesh);
+        const center = bbox.getCenter(new THREE.Vector3());
+        controls.target.copy(center);
+      } else {
+        controls.target.set(0, 0, 0);
+      }
+      controls.update();
+    });
+
+    // Load local GLB file
+    const glbFileInput = document.getElementById('glb-file-input');
+    document.getElementById('btn-load-glb').addEventListener('click', function() {
+      glbFileInput.click();
+    });
+    glbFileInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        const loader = new GLTFLoader();
+        loader.parse(ev.target.result, '', function(gltf) {
+          clearMesh();
+          mesh = gltf.scene;
+          scene.add(mesh);
+          // Center and scale to fit
+          const bbox = new THREE.Box3().setFromObject(mesh);
+          const center = bbox.getCenter(new THREE.Vector3());
+          const size = bbox.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const scale = 2.5 / maxDim;
+          mesh.scale.setScalar(scale);
+          mesh.position.sub(center.multiplyScalar(scale));
+          const bbox2 = new THREE.Box3().setFromObject(mesh);
+          const center2 = bbox2.getCenter(new THREE.Vector3());
+          controls.target.copy(center2);
+          controls.update();
+          schedulePreview();
+        }, function(err) {
+          console.error('GLB load error', err);
+          alert('Failed to load GLB file.');
+        });
+      };
+      reader.readAsArrayBuffer(file);
+      glbFileInput.value = '';
+    });
 
     // GLB download — show coffee modal first, skip/close triggers actual download
     let pendingGlbDownload = false;
