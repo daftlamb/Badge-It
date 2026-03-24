@@ -1895,82 +1895,57 @@
       else if (bgMode === 'gradient') scene.background = null;
       else if (bgMode === 'transparent') scene.background = new THREE.Color(0xe8e7e3);
 
-      // Render into a RenderTarget — main renderer context (env/matcap intact), no CSS/size changes
-      const recTarget = new THREE.WebGLRenderTarget(W, renderH, {
-        minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
-        format: THREE.RGBAFormat, type: THREE.UnsignedByteType,
-      });
-      const pixelBuffer = new Uint8Array(W * renderH * 4);
+      // Renderer pixel size → export size (false = don't touch CSS, no layout jump)
+      const savedRendW = renderer.domElement.width;
+      const savedRendH = renderer.domElement.height;
+      const savedDPR   = renderer.getPixelRatio();
+      renderer.setPixelRatio(1);
+      renderer.setSize(W, renderH, false);
 
       // Build offscreen composite canvas (this is what we record)
       const offCanvas = document.createElement('canvas');
       offCanvas.width = W; offCanvas.height = H;
       const offCtx = offCanvas.getContext('2d');
-      const frameImageData = offCtx.createImageData(W, renderH);
-      // Temp canvas for alpha-correct compositing of RenderTarget pixels
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = W; tempCanvas.height = renderH;
-      const tempCtx = tempCanvas.getContext('2d');
 
-      // Build recording camera
+      // Active camera: save + adjust aspect to export ratio
       const aspect = W / renderH;
-      const bbox = new THREE.Box3().setFromObject(mesh);
-      const bsphere = new THREE.Sphere();
-      bbox.getBoundingSphere(bsphere);
-      const r = bsphere.radius * (1 + padding);
-
-      // Use the active viewport camera for recording — same position/orientation as user sees
       const activeRecCam = usePerspective ? perspCam : camera;
-      // Save camera aspect, temporarily override for export ratio
-      const savedOrthoLeft   = camera.left,   savedOrthoRight = camera.right;
-      const savedOrthoTop    = camera.top,     savedOrthoBottom = camera.bottom;
+      const savedOrthoL = camera.left, savedOrthoR = camera.right;
+      const savedOrthoT = camera.top,  savedOrthoB = camera.bottom;
       const savedPerspAspect = perspCam ? perspCam.aspect : null;
-
-      // Adjust ortho camera to export aspect
-      const orthoSize = camera.top; // half-height
-      camera.left   = -orthoSize * aspect;
-      camera.right  =  orthoSize * aspect;
+      const orthoHalf = camera.top;
+      camera.left = -orthoHalf * aspect; camera.right = orthoHalf * aspect;
       camera.updateProjectionMatrix();
       if (perspCam) { perspCam.aspect = aspect; perspCam.updateProjectionMatrix(); }
 
-      // Enable auto-rotate for recording
+      // Orbit state — start from where user left off
       const wasRotating = autoRotate;
       controls.enabled = false;
-
-      // Orbit angle — start from current camera position
       const camDirNorm = camera.position.clone().sub(controls.target).normalize();
-      const recCenter = controls.target.clone();
-      const recDist = camera.position.distanceTo(controls.target);
-      const recElevation = Math.asin(Math.max(-1, Math.min(1, camDirNorm.y)));
-      let recAngle = Math.atan2(camDirNorm.z, camDirNorm.x);
+      const recCenter  = controls.target.clone();
+      const recDist    = camera.position.distanceTo(controls.target);
+      const recElev    = Math.asin(Math.max(-1, Math.min(1, camDirNorm.y)));
+      let   recAngle   = Math.atan2(camDirNorm.z, camDirNorm.x);
 
       function updateRecCam() {
         recAngle += AUTO_ROTATE_SPEED;
         const pos = new THREE.Vector3(
-          recCenter.x + Math.cos(recAngle) * Math.cos(recElevation) * recDist,
-          recCenter.y + Math.sin(recElevation) * recDist,
-          recCenter.z + Math.sin(recAngle) * Math.cos(recElevation) * recDist
+          recCenter.x + Math.cos(recAngle) * Math.cos(recElev) * recDist,
+          recCenter.y + Math.sin(recElev) * recDist,
+          recCenter.z + Math.sin(recAngle) * Math.cos(recElev) * recDist
         );
-        camera.position.copy(pos);
-        camera.lookAt(recCenter);
-        if (perspCam) { perspCam.position.copy(pos); perspCam.lookAt(recCenter); }
+        activeRecCam.position.copy(pos);
+        activeRecCam.lookAt(recCenter);
+        // sync other camera too so viewport looks right if user switches
+        if (usePerspective) { camera.position.copy(pos); camera.lookAt(recCenter); }
+        else if (perspCam)  { perspCam.position.copy(pos); perspCam.lookAt(recCenter); }
       }
 
-      // Per-frame composite: render to target → read pixels → draw to offCanvas
+      // Per-frame composite: renderer draws to its canvas (now W×renderH pixels), copy to offCanvas
       function compositeFrame() {
         updateRecCam();
         if (bgMode === 'gradient') renderer.setClearColor(0x000000, 0);
-        // Render into RenderTarget (exact W×renderH, no CSS distortion, same context)
-        renderer.setRenderTarget(recTarget);
         renderer.render(scene, activeRecCam);
-        renderer.setRenderTarget(null);
-        // Read pixels from RenderTarget (WebGL is Y-flipped, correct below)
-        renderer.readRenderTargetPixels(recTarget, 0, 0, W, renderH, pixelBuffer);
-        // Flip Y (WebGL origin is bottom-left, canvas is top-left)
-        for (let row = 0; row < renderH; row++) {
-          const src = (renderH - 1 - row) * W * 4;
-          frameImageData.data.set(pixelBuffer.subarray(src, src + W * 4), row * W * 4);
-        }
 
         // 1. Fill background
         if (bgMode === 'gradient') {
@@ -1982,9 +1957,8 @@
           offCtx.fillStyle = bgHex;
           offCtx.fillRect(0, 0, W, H);
         }
-        // 2. Put render pixels into tempCanvas, then drawImage (supports alpha blend)
-        tempCtx.putImageData(frameImageData, 0, 0);
-        offCtx.drawImage(tempCanvas, 0, 0);
+        // 2. drawImage reads pixel buffer (W×renderH), not CSS display size
+        offCtx.drawImage(renderer.domElement, 0, 0, W, renderH);
 
         if (hasCaption) {
           offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle';
@@ -2047,13 +2021,13 @@
           openModal('coffee-modal');
         };
 
-        // Cleanup — restore camera aspect
-        camera.left = savedOrthoLeft; camera.right = savedOrthoRight;
-        camera.top  = savedOrthoTop;  camera.bottom = savedOrthoBottom;
+        // Cleanup — restore camera aspect + renderer size
+        camera.left = savedOrthoL; camera.right = savedOrthoR;
+        camera.top  = savedOrthoT; camera.bottom = savedOrthoB;
         camera.updateProjectionMatrix();
         if (perspCam && savedPerspAspect !== null) { perspCam.aspect = savedPerspAspect; perspCam.updateProjectionMatrix(); }
-        recTarget.dispose();
-        renderer.setRenderTarget(null);
+        renderer.setPixelRatio(savedDPR);
+        renderer.setSize(savedRendW, savedRendH, false);
         if (bgMode === 'gradient') renderer.setClearColor(0x000000, 1);
         scene.background = savedBg || new THREE.Color(0xe8e7e3);
         autoRotate = wasRotating;
