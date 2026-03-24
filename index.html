@@ -655,6 +655,13 @@
     </div>
   </div>
 
+  <!-- Recording preview modal: main canvas moves here during recording -->
+  <div id="rec-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.7);
+    align-items:center;justify-content:center;flex-direction:column;gap:12px">
+    <div id="rec-canvas-wrap" style="position:relative;overflow:hidden;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.6)"></div>
+    <div style="color:#fff;font-size:12px;opacity:.7">recording… click ⏹ stop to finish</div>
+  </div>
+
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1895,12 +1902,33 @@
       else if (bgMode === 'gradient') scene.background = null;
       else if (bgMode === 'transparent') scene.background = new THREE.Color(0xe8e7e3);
 
-      // Renderer pixel size → export size (false = don't touch CSS, no layout jump)
+      // --- Move main renderer canvas into rec-modal (exact export size, no CSS interference) ---
+      const recCanvas = renderer.domElement;
+      const canvasParent = recCanvas.parentNode; // save original parent (#canvas-area)
+
+      // Cap preview size to viewport, preserve aspect
+      const aspect = W / renderH;
+      const maxPW = Math.min(W, window.innerWidth * 0.9);
+      const maxPH = Math.min(renderH, window.innerHeight * 0.75);
+      const previewW = Math.round(Math.min(maxPW, maxPH * aspect));
+      const previewH = Math.round(previewW / aspect);
+
+      const recWrap = document.getElementById('rec-canvas-wrap');
+      recWrap.style.width  = previewW + 'px';
+      recWrap.style.height = previewH + 'px';
+
+      // Resize renderer to export size, move canvas to modal
       const savedRendW = renderer.domElement.width;
       const savedRendH = renderer.domElement.height;
       const savedDPR   = renderer.getPixelRatio();
       renderer.setPixelRatio(1);
-      renderer.setSize(W, renderH, false);
+      renderer.setSize(W, renderH, false); // pixel size = export, CSS untouched
+      // Override canvas CSS to fill the rec-wrap exactly
+      recCanvas.style.width  = previewW + 'px';
+      recCanvas.style.height = previewH + 'px';
+      recCanvas.style.display = 'block';
+      recWrap.appendChild(recCanvas);
+      document.getElementById('rec-modal').style.display = 'flex';
 
       // Build offscreen composite canvas (this is what we record)
       const offCanvas = document.createElement('canvas');
@@ -2021,7 +2049,11 @@
           openModal('coffee-modal');
         };
 
-        // Cleanup — restore camera aspect + renderer size
+        // Cleanup — restore canvas to original parent + renderer size + camera aspect
+        document.getElementById('rec-modal').style.display = 'none';
+        recCanvas.style.width  = '';
+        recCanvas.style.height = '';
+        canvasParent.appendChild(recCanvas); // move back to #canvas-area
         camera.left = savedOrthoL; camera.right = savedOrthoR;
         camera.top  = savedOrthoT; camera.bottom = savedOrthoB;
         camera.updateProjectionMatrix();
