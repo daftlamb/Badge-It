@@ -1894,28 +1894,17 @@
       else if (bgMode === 'gradient') scene.background = null;
       else if (bgMode === 'transparent') scene.background = new THREE.Color(0xe8e7e3);
 
-      // Create dedicated off-screen renderer (exact pixel size, no CSS distortion)
-      const recRenderer = new THREE.WebGLRenderer({
-        antialias: true, alpha: true,
-        preserveDrawingBuffer: false,
-        logarithmicDepthBuffer: true,
-      });
-      recRenderer.setPixelRatio(1);
-      recRenderer.setSize(W, renderH, false); // false = don't set CSS size
-      recRenderer.shadowMap.enabled = false;
-      recRenderer.toneMapping = renderer.toneMapping;
-      recRenderer.toneMappingExposure = renderer.toneMappingExposure;
-      recRenderer.outputColorSpace = renderer.outputColorSpace;
+      // Use main renderer for recording — same WebGL context = same env/materials/lighting
+      // Temporarily remove CSS size override so canvas pixel size = render size (no distortion)
+      const recCanvas = renderer.domElement;
+      const savedCssW = recCanvas.style.width;
+      const savedCssH = recCanvas.style.height;
+      recCanvas.style.width = W + 'px';
+      recCanvas.style.height = renderH + 'px';
 
-      // Re-bake environment map in recRenderer's context so materials render correctly
-      const recPmrem = new THREE.PMREMGenerator(recRenderer);
-      recPmrem.compileEquirectangularShader();
-      const savedEnv = scene.environment;
-      if (savedEnv) {
-        // Re-generate from RoomEnvironment as fallback (fast)
-        const recRoomEnv = recPmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-        scene.environment = recRoomEnv;
-      }
+      const savedW = canvasArea.clientWidth, savedH = canvasArea.clientHeight;
+      renderer.setPixelRatio(1);
+      renderer.setSize(W, renderH, false); // false = don't touch CSS (we set it above)
 
       // Build offscreen composite canvas (this is what we record)
       const offCanvas = document.createElement('canvas');
@@ -1959,8 +1948,8 @@
       // Per-frame composite: render → copy to offCanvas → draw caption
       function compositeFrame() {
         updateRecCam();
-        if (bgMode === 'gradient') recRenderer.setClearColor(0x000000, 0);
-        recRenderer.render(scene, recCam);
+        if (bgMode === 'gradient') renderer.setClearColor(0x000000, 0);
+        renderer.render(scene, recCam);
 
         // 1. Fill background first (full canvas incl. caption area)
         if (bgMode === 'gradient') {
@@ -1973,7 +1962,7 @@
           offCtx.fillRect(0, 0, W, H);
         }
         // 2. Composite 3D render on top (recRenderer canvas is exactly W×renderH)
-        offCtx.drawImage(recRenderer.domElement, 0, 0, W, renderH);
+        offCtx.drawImage(renderer.domElement, 0, 0, W, renderH);
 
         if (hasCaption) {
           offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle';
@@ -1995,13 +1984,8 @@
       let frameLoopActive = true;
       function recordLoop() {
         if (!frameLoopActive) return;
-        compositeFrame(); // updates recCam position internally
-        // Sync main camera to recCam so viewport shows the rotation
-        const viewCam = usePerspective ? perspCam : camera;
-        viewCam.position.copy(recCam.position);
-        viewCam.lookAt(recCenter);
-        if (usePerspective && composer) composer.render();
-        else renderer.render(scene, camera);
+        compositeFrame(); // renders scene with recCam → composites onto offCanvas
+        // compositeFrame already called renderer.render, offCanvas has correct frame
         requestAnimationFrame(recordLoop);
       }
       animating = false; // pause normal animate loop
@@ -2041,10 +2025,12 @@
           openModal('coffee-modal');
         };
 
-        // Restore scene & dispose recRenderer
-        scene.environment = savedEnv; // restore original env map
-        recPmrem.dispose();
-        recRenderer.dispose();
+        // Restore renderer CSS + size
+        recCanvas.style.width = savedCssW;
+        recCanvas.style.height = savedCssH;
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(savedW, savedH, false);
+        if (bgMode === 'gradient') renderer.setClearColor(0x000000, 1);
         scene.background = savedBg || new THREE.Color(0xe8e7e3);
         autoRotate = wasRotating;
         controls.enabled = true;
