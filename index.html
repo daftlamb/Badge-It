@@ -17,10 +17,10 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #f5f4f0; --panel: #f5f4f0; --border: #d0cfc9;
-      --text: #1a1a1a; --muted: #999999; --accent: #1a1a1a;
+      --bg: #f5f5f5; --panel: #f5f5f5; --border: #d0cfc9;
+      --text: #1a1a1a; --muted: #888; --accent: #1a1a1a;
       --canvas-bg: #e8e7e3; --font: 'Courier New', monospace;
-      --header-bg: #ffffff;
+      --header-bg: #ffffff; --surface: #fff;
     }
     [data-theme="dark"] {
       --bg: #141414; --panel: #141414; --border: #2a2a2a;
@@ -42,7 +42,7 @@
     [data-theme="dark"] .panel-section { background: #141414; border-color: var(--border); }
     [data-theme="dark"] .section-title { color: var(--accent); }
     [data-theme="dark"] .logo { color: var(--accent); }
-    html, body { height: 100%; font-family: var(--font); color: var(--text); overflow: hidden; }
+    html, body { height: 100%; font-family: "Outfit","Noto Sans SC",sans-serif; color: var(--text); overflow: hidden; }
     body { display: grid; grid-template-columns: 290px 1fr; grid-template-rows: auto 1fr; height: 100vh; }
     header {
       grid-column: 1 / -1; height: 44px; background: var(--header-bg, #ffffff);
@@ -64,12 +64,10 @@
       cursor: pointer; transition: background 0.15s, color 0.15s;
     }
     .btn-coffee:hover { background: #e07820; color: #fff; }
-    .btn-icon {
-      font-family: var(--font); font-size: 13px; background: transparent;
-      border: 1px solid var(--border); color: var(--muted);
-      padding: 4px 8px; cursor: pointer; transition: background 0.15s, color 0.15s; line-height: 1;
-    }
-    .btn-icon:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .brand{font-weight:500;font-size:15px;letter-spacing:-.3px}
+    .brand-it{color:var(--accent)}
+    .btn-icon{height:28px;min-width:28px;border:1px solid var(--border);background:transparent;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text);transition:border-color .15s,color .15s;padding:0 8px;font-family:inherit}
+    .btn-icon:hover{border-color:var(--accent);color:var(--accent)}
     .btn-wide { width: 100%; padding: 7px 10px; font-size: 11px; }
     .btn-muted { border-color: var(--border); color: var(--muted); font-size: 10px; padding: 3px 7px; }
     .btn-muted:hover { background: var(--border); color: var(--text); }
@@ -233,14 +231,12 @@
 <body>
   <header>
     <div style="display:flex;align-items:center;gap:10px">
-      <span class="logo">Badge It</span>
-      <button class="btn-icon" id="btn-darkmode" title="Toggle dark mode" style="font-size:12px">◐</button>
+      <div class="brand">Badge<span class="brand-it">It</span></div>
+      <button class="btn-icon" id="btn-darkmode" title="Toggle dark mode" style="font-size:12px;padding:0 6px">◐</button>
     </div>
-    <div class="header-right">
-      <button class="btn-icon" id="btn-help">?</button>
-      <button class="btn-icon" id="btn-about">i</button>
-      <button class="btn-coffee" id="btn-coffee">&#9749;</button>
-    </div>
+    <div style="flex:1"></div>
+    <button class="btn-icon" id="btn-coffee" style="color:#e07820;border-color:#e07820;padding:0 10px;font-size:12px">☕ support</button>
+    <button class="btn-icon" id="btn-about">i</button>
   </header>
 
   <div id="panel">
@@ -1881,8 +1877,12 @@
       pendingVideoRecord = false;
       openModal('coffee-modal');
     });
-    document.getElementById('btn-help').addEventListener('click', () => openModal('help-modal'));
-    document.getElementById('btn-about').addEventListener('click', () => openModal('about-modal'));
+
+    // About modal (new Dither It style)
+    var aboutBackdrop = document.getElementById('about-modal-backdrop');
+    document.getElementById('btn-about').addEventListener('click', function(){ aboutBackdrop.style.display='flex'; });
+    document.getElementById('about-modal-close').addEventListener('click', function(){ aboutBackdrop.style.display='none'; });
+    aboutBackdrop.addEventListener('click', function(e){ if(e.target===aboutBackdrop) aboutBackdrop.style.display='none'; });
 
     // Dark mode toggle
     const btnDark = document.getElementById('btn-darkmode');
@@ -1915,6 +1915,8 @@
     });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        // Close new about backdrop
+        if (aboutBackdrop.style.display === 'flex') { aboutBackdrop.style.display = 'none'; return; }
         const wasCoffeeOpen = document.getElementById('coffee-modal').classList.contains('open');
         document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
         if (wasCoffeeOpen) firePendingAction();
@@ -1924,5 +1926,21 @@
     // Initial build
     rebuildMesh();
   </script>
+
+  <!-- About modal (Dither It style) -->
+  <div id="about-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:200;align-items:center;justify-content:center">
+    <div style="background:var(--surface,#fff);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:380px;width:90%;position:relative;box-shadow:0 24px 64px rgba(0,0,0,.3);font-family:inherit">
+      <button id="about-modal-close" style="position:absolute;top:14px;right:14px;width:28px;height:28px;border:1px solid var(--border);border-radius:50%;background:transparent;color:var(--muted);font-size:14px;cursor:pointer">✕</button>
+      <div style="font-size:36px;margin-bottom:12px">✦</div>
+      <div style="font-size:20px;font-weight:500;margin-bottom:6px">Badge It</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px">Create 3D badge renders with custom text, materials, environments, and depth of field effects. Export as PNG. Free to use, no signup, no server.</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.8">
+        Also try:<br>
+        <a href="https://griditapp.com" target="_blank" style="color:var(--accent);text-decoration:none">Grid It</a> — graphic grid generator<br>
+        <a href="https://ditheritapp.com" target="_blank" style="color:var(--accent);text-decoration:none">Dither It</a> — dithering tool
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
