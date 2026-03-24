@@ -1907,6 +1907,10 @@
       offCanvas.width = W; offCanvas.height = H;
       const offCtx = offCanvas.getContext('2d');
       const frameImageData = offCtx.createImageData(W, renderH);
+      // Temp canvas for alpha-correct compositing of RenderTarget pixels
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = W; tempCanvas.height = renderH;
+      const tempCtx = tempCanvas.getContext('2d');
 
       // Build recording camera
       const aspect = W / renderH;
@@ -1968,8 +1972,9 @@
           offCtx.fillStyle = bgHex;
           offCtx.fillRect(0, 0, W, H);
         }
-        // 2. Composite 3D render pixels on top
-        offCtx.putImageData(frameImageData, 0, 0);
+        // 2. Put render pixels into tempCanvas, then drawImage (supports alpha blend)
+        tempCtx.putImageData(frameImageData, 0, 0);
+        offCtx.drawImage(tempCanvas, 0, 0);
 
         if (hasCaption) {
           offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle';
