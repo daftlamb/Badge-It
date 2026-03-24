@@ -1903,10 +1903,19 @@
       recRenderer.setPixelRatio(1);
       recRenderer.setSize(W, renderH, false); // false = don't set CSS size
       recRenderer.shadowMap.enabled = false;
-      // Copy environment
       recRenderer.toneMapping = renderer.toneMapping;
       recRenderer.toneMappingExposure = renderer.toneMappingExposure;
       recRenderer.outputColorSpace = renderer.outputColorSpace;
+
+      // Re-bake environment map in recRenderer's context so materials render correctly
+      const recPmrem = new THREE.PMREMGenerator(recRenderer);
+      recPmrem.compileEquirectangularShader();
+      const savedEnv = scene.environment;
+      if (savedEnv) {
+        // Re-generate from RoomEnvironment as fallback (fast)
+        const recRoomEnv = recPmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        scene.environment = recRoomEnv;
+      }
 
       // Build offscreen composite canvas (this is what we record)
       const offCanvas = document.createElement('canvas');
@@ -2033,6 +2042,8 @@
         };
 
         // Restore scene & dispose recRenderer
+        scene.environment = savedEnv; // restore original env map
+        recPmrem.dispose();
         recRenderer.dispose();
         scene.background = savedBg || new THREE.Color(0xe8e7e3);
         autoRotate = wasRotating;
