@@ -115,6 +115,7 @@
     .color-hex { font-size: 10px; color: var(--text); }
     #canvas-area { background: var(--canvas-bg); position: relative; overflow: hidden; }
     #canvas-area canvas { display: block; width: 100% !important; height: 100% !important; }
+    #canvas-area canvas.recording { width: auto !important; height: auto !important; }
 
     /* ── Canvas Mask Overlay ── */
     #canvas-mask {
@@ -1897,8 +1898,8 @@
       // Use main renderer for recording — same WebGL context = same env/materials/lighting
       // Temporarily remove CSS size override so canvas pixel size = render size (no distortion)
       const recCanvas = renderer.domElement;
-      const savedCssW = recCanvas.style.width;
-      const savedCssH = recCanvas.style.height;
+      // Add .recording class to override 100% CSS with exact pixel size
+      recCanvas.classList.add('recording');
       recCanvas.style.width = W + 'px';
       recCanvas.style.height = renderH + 'px';
 
@@ -2026,8 +2027,9 @@
         };
 
         // Restore renderer CSS + size
-        recCanvas.style.width = savedCssW;
-        recCanvas.style.height = savedCssH;
+        recCanvas.classList.remove('recording');
+        recCanvas.style.width = '';
+        recCanvas.style.height = '';
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(savedW, savedH, false);
         if (bgMode === 'gradient') renderer.setClearColor(0x000000, 1);
