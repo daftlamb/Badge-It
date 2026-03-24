@@ -1896,12 +1896,11 @@
       else if (bgMode === 'transparent') scene.background = new THREE.Color(0xe8e7e3);
 
       // Use main renderer — same WebGL context preserves env/matcap/HDR
-      // Save current display size, resize to export size for rendering
-      // Don't touch CSS so viewport looks normal during recording
+      // setSize with updateStyle=false so viewport layout doesn't jump
       const recCanvas = renderer.domElement;
       const savedW = canvasArea.clientWidth, savedH = canvasArea.clientHeight;
       renderer.setPixelRatio(1);
-      renderer.setSize(W, renderH); // setSize also updates CSS width/height
+      renderer.setSize(W, renderH, false); // false = don't update CSS → no layout jump
 
       // Build offscreen composite canvas (this is what we record)
       const offCanvas = document.createElement('canvas');
@@ -2026,7 +2025,7 @@
         recCanvas.style.width = '';
         recCanvas.style.height = '';
         renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(savedW, savedH); // restore with CSS update
+        renderer.setSize(savedW, savedH, false); // restore pixel size, keep CSS as-is
         if (bgMode === 'gradient') renderer.setClearColor(0x000000, 1);
         scene.background = savedBg || new THREE.Color(0xe8e7e3);
         autoRotate = wasRotating;
