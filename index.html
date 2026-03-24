@@ -545,13 +545,7 @@
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn" style="flex:1;padding:7px 0;font-size:11px" id="btn-download">&#8595; png</button>
         <button class="btn" style="flex:1;padding:7px 0;font-size:11px" id="btn-download-glb">&#8595; glb</button>
-        <button class="btn" style="flex:1 0 100%;padding:7px 0;font-size:11px;margin-top:4px" id="btn-record-video">&#9654; record video</button>
-      </div>
-      <div id="record-status" style="display:none;margin-top:8px;font-size:10px;color:var(--muted);text-align:center;letter-spacing:0.08em">
-        <span id="record-status-text">recording…</span>
-        <div style="margin-top:4px;height:2px;background:var(--border);border-radius:1px">
-          <div id="record-progress" style="height:100%;background:var(--accent);width:0%;transition:width 0.3s"></div>
-        </div>
+        <button class="btn" style="flex:1 0 100%;padding:7px 0;font-size:11px;margin-top:4px" id="btn-record-video">&#9654; preview fullscreen</button>
       </div>
     </div>
   </div><!-- /panel -->
@@ -638,6 +632,20 @@
   </div>
 
   <!-- Video preview modal -->
+  <!-- Fullscreen preview overlay for screen recording -->
+  <div id="fs-preview" style="display:none;position:fixed;inset:0;z-index:9000;background:#000;flex-direction:column;align-items:center;justify-content:center">
+    <div id="fs-canvas-wrap" style="position:relative;flex:1;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden"></div>
+    <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);
+      color:#fff;font-size:11px;padding:5px 14px;border-radius:20px;letter-spacing:.06em;pointer-events:none">
+      use screen recording to capture · ESC to exit
+    </div>
+    <button id="btn-fs-exit" style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);
+      background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);
+      border-radius:6px;padding:7px 22px;font-size:11px;cursor:pointer;letter-spacing:.06em">
+      &#10005; exit preview
+    </button>
+  </div>
+
   <div class="modal-overlay" id="video-preview-modal">
     <div class="modal-box" style="max-width:520px;text-align:center">
       <button class="modal-close" data-modal="video-preview-modal">&#10005;</button>
@@ -653,13 +661,6 @@
         <button class="btn" style="flex:1;padding:8px 0;font-size:11px;border-color:var(--border);color:var(--muted)" id="btn-video-support">☕ support first</button>
       </div>
     </div>
-  </div>
-
-  <!-- Recording preview modal: main canvas moves here during recording -->
-  <div id="rec-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.7);
-    align-items:center;justify-content:center;flex-direction:column;gap:12px">
-    <div id="rec-canvas-wrap" style="position:relative;overflow:hidden;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.6)"></div>
-    <div style="color:#fff;font-size:12px;opacity:.7">recording… click ⏹ stop to finish</div>
   </div>
 
   <script type="module">
@@ -1879,229 +1880,66 @@
       }, (err) => { console.error('GLTFExporter error', err); }, { binary: true });
     }
 
-    // ── Video recording ──────────────────────────────────────
-    let mediaRecorder = null;
-    let recordChunks = [];
-    const RECORD_DURATION = 20000; // 20s = 1 full rotation
+    // ── Fullscreen preview (let user screen-record) ──────────────────────────────
+    let fsPreviewActive = false;
 
-    function doStartRecording() {
-      if (mediaRecorder) return;
-      const statusWrap = document.getElementById('record-status');
-      const statusText = document.getElementById('record-status-text');
-      const progress = document.getElementById('record-progress');
+    function doFullscreenPreview() {
+      if (fsPreviewActive || !mesh) return;
+      fsPreviewActive = true;
+
       const btn = document.getElementById('btn-record-video');
+      const fsEl = document.getElementById('fs-preview');
+      const wrap = document.getElementById('fs-canvas-wrap');
 
-      // Get export params (size, bg, caption)
-      const p = getExportParams();
-      const { W, H, bgMode, padding, captionName, captionCopy, captionSize, captionColor, hasCaption, lineH, captionH } = p;
-      const renderH = Math.max(H - captionH, 1);
-
-      // Apply bg to scene
+      // Save state
+      const wasRotating = autoRotate;
       const savedBg = scene.background ? scene.background.clone() : null;
+
+      // Apply export bg to scene
+      const p = getExportParams();
+      const { bgMode } = p;
       if (bgMode === 'color') scene.background = new THREE.Color(document.getElementById('export-bg-color').value);
       else if (bgMode === 'gradient') scene.background = null;
-      else if (bgMode === 'transparent') scene.background = new THREE.Color(0xe8e7e3);
+      // transparent: keep as-is
 
-      // --- Move main renderer canvas into rec-modal (exact export size, no CSS interference) ---
-      const recCanvas = renderer.domElement;
-      const canvasParent = recCanvas.parentNode; // save original parent (#canvas-area)
+      // Start auto-rotate
+      autoRotate = true;
+      document.getElementById('auto-rotate-toggle').checked = true;
 
-      // Cap preview size to viewport, preserve aspect
-      const aspect = W / renderH;
-      const maxPW = Math.min(W, window.innerWidth * 0.9);
-      const maxPH = Math.min(renderH, window.innerHeight * 0.75);
-      const previewW = Math.round(Math.min(maxPW, maxPH * aspect));
-      const previewH = Math.round(previewW / aspect);
+      // Show fullscreen overlay
+      fsEl.style.display = 'flex';
+      btn.textContent = '⏹ exit preview';
 
-      const recWrap = document.getElementById('rec-canvas-wrap');
-      recWrap.style.width  = previewW + 'px';
-      recWrap.style.height = previewH + 'px';
-
-      // Resize renderer to export size, move canvas to modal
-      const savedRendW = renderer.domElement.width;
-      const savedRendH = renderer.domElement.height;
-      const savedDPR   = renderer.getPixelRatio();
-      renderer.setPixelRatio(1);
-      renderer.setSize(W, renderH, false); // pixel size = export, CSS untouched
-      // Override canvas CSS to fill the rec-wrap exactly
-      recCanvas.style.width  = previewW + 'px';
-      recCanvas.style.height = previewH + 'px';
-      recCanvas.style.display = 'block';
-      recWrap.appendChild(recCanvas);
-      document.getElementById('rec-modal').style.display = 'flex';
-
-      // Build offscreen composite canvas (this is what we record)
-      const offCanvas = document.createElement('canvas');
-      offCanvas.width = W; offCanvas.height = H;
-      const offCtx = offCanvas.getContext('2d');
-
-      // Active camera: save + adjust aspect to export ratio
-      const aspect = W / renderH;
-      const activeRecCam = usePerspective ? perspCam : camera;
-      const savedOrthoL = camera.left, savedOrthoR = camera.right;
-      const savedOrthoT = camera.top,  savedOrthoB = camera.bottom;
-      const savedPerspAspect = perspCam ? perspCam.aspect : null;
-      const orthoHalf = camera.top;
-      camera.left = -orthoHalf * aspect; camera.right = orthoHalf * aspect;
-      camera.updateProjectionMatrix();
-      if (perspCam) { perspCam.aspect = aspect; perspCam.updateProjectionMatrix(); }
-
-      // Orbit state — start from where user left off
-      const wasRotating = autoRotate;
-      controls.enabled = false;
-      const camDirNorm = camera.position.clone().sub(controls.target).normalize();
-      const recCenter  = controls.target.clone();
-      const recDist    = camera.position.distanceTo(controls.target);
-      const recElev    = Math.asin(Math.max(-1, Math.min(1, camDirNorm.y)));
-      let   recAngle   = Math.atan2(camDirNorm.z, camDirNorm.x);
-
-      function updateRecCam() {
-        recAngle += AUTO_ROTATE_SPEED;
-        const pos = new THREE.Vector3(
-          recCenter.x + Math.cos(recAngle) * Math.cos(recElev) * recDist,
-          recCenter.y + Math.sin(recElev) * recDist,
-          recCenter.z + Math.sin(recAngle) * Math.cos(recElev) * recDist
-        );
-        activeRecCam.position.copy(pos);
-        activeRecCam.lookAt(recCenter);
-        // sync other camera too so viewport looks right if user switches
-        if (usePerspective) { camera.position.copy(pos); camera.lookAt(recCenter); }
-        else if (perspCam)  { perspCam.position.copy(pos); perspCam.lookAt(recCenter); }
-      }
-
-      // Per-frame composite: renderer draws to its canvas (now W×renderH pixels), copy to offCanvas
-      function compositeFrame() {
-        updateRecCam();
-        if (bgMode === 'gradient') renderer.setClearColor(0x000000, 0);
-        renderer.render(scene, activeRecCam);
-
-        // 1. Fill background
-        if (bgMode === 'gradient') {
-          drawGradientOnCtx(offCtx, W, H);
-        } else {
-          const bgHex = bgMode === 'color'
-            ? document.getElementById('export-bg-color').value
-            : '#' + (savedBg ? savedBg.getHexString() : 'e8e7e3');
-          offCtx.fillStyle = bgHex;
-          offCtx.fillRect(0, 0, W, H);
-        }
-        // 2. drawImage reads pixel buffer (W×renderH), not CSS display size
-        offCtx.drawImage(renderer.domElement, 0, 0, W, renderH);
-
-        if (hasCaption) {
-          offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle';
-          let y = renderH + captionSize * 0.6;
-          if (captionName) {
-            offCtx.font = `400 ${captionSize}px 'Outfit','Noto Sans SC',sans-serif`;
-            offCtx.fillStyle = captionColor; offCtx.globalAlpha = 1;
-            offCtx.fillText(captionName, W/2, y); y += lineH;
-          }
-          if (captionCopy) {
-            offCtx.font = `300 ${Math.round(captionSize*0.75)}px 'Outfit','Noto Sans SC',sans-serif`;
-            offCtx.fillStyle = captionColor; offCtx.globalAlpha = 0.65;
-            offCtx.fillText(captionCopy, W/2, y); offCtx.globalAlpha = 1;
-          }
-        }
-      }
-
-      // Record loop — independent of main animate
-      let frameLoopActive = true;
-      function recordLoop() {
-        if (!frameLoopActive) return;
-        compositeFrame(); // renders scene with recCam → composites onto offCanvas
-        // compositeFrame already called renderer.render, offCanvas has correct frame
-        requestAnimationFrame(recordLoop);
-      }
-      animating = false; // pause normal animate loop
-      requestAnimationFrame(recordLoop);
-
-      // Record offCanvas stream
-      const stream = offCanvas.captureStream(60);
-      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-        ? 'video/webm;codecs=vp9' : 'video/webm';
-      mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
-      recordChunks = [];
-      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordChunks.push(e.data); };
-      mediaRecorder.onstop = () => {
-        frameLoopActive = false;
-
-        const blob = new Blob(recordChunks, { type: mimeType });
-        const videoUrl = URL.createObjectURL(blob);
-
-        // Preview modal
-        const player = document.getElementById('video-preview-player');
-        player.src = videoUrl; player.play();
-        openModal('video-preview-modal');
-
-        const dlBtn = document.getElementById('btn-video-download-now');
-        const dlHandler = () => {
-          const a = document.createElement('a');
-          a.href = videoUrl; a.download = 'badge-rotate.webm'; a.click();
-          closeModal('video-preview-modal');
-          URL.revokeObjectURL(videoUrl);
-          dlBtn.removeEventListener('click', dlHandler);
-        };
-        dlBtn.addEventListener('click', dlHandler);
-
-        document.getElementById('btn-video-support').onclick = () => {
-          closeModal('video-preview-modal');
-          pendingGlbDownload = false;
-          openModal('coffee-modal');
-        };
-
-        // Cleanup — restore canvas to original parent + renderer size + camera aspect
-        document.getElementById('rec-modal').style.display = 'none';
-        recCanvas.style.width  = '';
-        recCanvas.style.height = '';
-        canvasParent.appendChild(recCanvas); // move back to #canvas-area
-        camera.left = savedOrthoL; camera.right = savedOrthoR;
-        camera.top  = savedOrthoT; camera.bottom = savedOrthoB;
-        camera.updateProjectionMatrix();
-        if (perspCam && savedPerspAspect !== null) { perspCam.aspect = savedPerspAspect; perspCam.updateProjectionMatrix(); }
-        renderer.setPixelRatio(savedDPR);
-        renderer.setSize(savedRendW, savedRendH, false);
-        if (bgMode === 'gradient') renderer.setClearColor(0x000000, 1);
+      function exitPreview() {
+        fsPreviewActive = false;
+        fsEl.style.display = 'none';
+        btn.textContent = '⛶ preview fullscreen';
         scene.background = savedBg || new THREE.Color(0xe8e7e3);
         autoRotate = wasRotating;
-        controls.enabled = true;
         document.getElementById('auto-rotate-toggle').checked = wasRotating;
-        animating = true; animate(); // restart normal loop
+      }
 
-        statusWrap.style.display = 'none';
-        btn.textContent = '▶ record video';
-        btn.disabled = false;
-        mediaRecorder = null;
-      };
+      document.getElementById('btn-fs-exit').onclick = exitPreview;
+      document.addEventListener('keydown', function onEsc(e) {
+        if (e.key === 'Escape') { exitPreview(); document.removeEventListener('keydown', onEsc); }
+      }, { once: false });
 
-      mediaRecorder.start();
-      statusWrap.style.display = 'block';
-      statusText.textContent = 'recording…';
-      btn.textContent = '⏹ stop';
-      btn.disabled = false;
-
-      // Progress + auto-stop
-      const start = performance.now();
-      const tick = () => {
-        if (!mediaRecorder) return;
-        const elapsed = performance.now() - start;
-        progress.style.width = Math.min(elapsed / RECORD_DURATION * 100, 100) + '%';
-        if (elapsed >= RECORD_DURATION) mediaRecorder.stop();
-        else requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
+      // Re-attach so it only fires once per preview session
+      document.addEventListener('keydown', function handler(e) {
+        if (e.key === 'Escape' && fsPreviewActive) {
+          exitPreview();
+          document.removeEventListener('keydown', handler);
+        }
+      });
     }
 
     document.getElementById('btn-record-video').addEventListener('click', () => {
-      if (mediaRecorder) {
-        mediaRecorder.stop();
-        return;
-      }
+      if (fsPreviewActive) return;
       if (!mesh) { alert('No model loaded.'); return; }
-      doStartRecording();
+      doFullscreenPreview();
     });
     function firePendingAction() {
       if (pendingGlbDownload) { pendingGlbDownload = false; doGlbDownload(); }
-      else if (pendingVideoRecord) { pendingVideoRecord = false; doStartRecording(); }
     }
     document.getElementById('btn-coffee-skip').addEventListener('click', () => {
       closeModal('coffee-modal');
