@@ -666,41 +666,18 @@ function buildPresetGeometry(shape) {
 // then builds a Three.js Shape and extrudes it with user-defined depth.
 
 function alphaToShape(px, W, H, threshold) {
-  // Downsample to a binary mask first for speed
   const mask = new Uint8Array(W * H);
   for (let i = 0; i < W * H; i++) {
     mask[i] = px[i * 4 + 3] > threshold ? 1 : 0;
   }
 
-  // Find the largest connected blob's boundary using Moore neighborhood tracing
-  // Returns array of {x,y} contour points in [0,W] x [0,H] space
-  function traceBoundary(startX, startY) {
-    const pts = [];
-    // 8-direction clockwise: E, SE, S, SW, W, NW, N, NE
-    const dx = [1,1,0,-1,-1,-1,0,1];
-    const dy = [0,1,1,1,0,-1,-1,-1];
-    let cx = startX, cy = startY;
-    let dir = 6; // start looking North
-    const maxPts = W * H;
-    let steps = 0;
-    do {
-      pts.push({x: cx, y: cy});
-      // Turn left from current direction, then find next boundary pixel
-      let d = (dir + 6) % 8;
-      for (let k = 0; k < 8; k++) {
-        const nx = cx + dx[d], ny = cy + dy[d];
-        if (nx >= 0 && nx < W && ny >= 0 && ny < H && mask[ny * W + nx]) {
-          cx = nx; cy = ny; dir = d;
-          break;
-        }
-        d = (d + 1) % 8;
-      }
-      if (++steps > maxPts) break;
-    } while (cx !== startX || cy !== startY);
-    return pts;
-  }
+  // Find all boundary pixels (has foreground neighbor + background neighbor)
+  // Then walk the outer contour starting from the topmost-leftmost pixel
+  // Use square-tracing / Moore neighborhood boundary tracing
+  const dx8 = [1,1,0,-1,-1,-1,0,1];
+  const dy8 = [0,1,1,1,0,-1,-1,-1];
 
-  // Find first foreground pixel (top-left scan)
+  // Find start: topmost row that has a foreground pixel, then leftmost in that row
   let startX = -1, startY = -1;
   outer: for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
@@ -709,14 +686,46 @@ function alphaToShape(px, W, H, threshold) {
   }
   if (startX < 0) return null;
 
-  const rawPts = traceBoundary(startX, startY);
-  if (rawPts.length < 6) return null;
+  // Moore neighborhood tracing (Jacob's stopping criterion)
+  const pts = [];
+  let cx = startX, cy = startY;
+  // Entry direction: we came from above (direction index 6 = North)
+  let backDir = 6;
+  const maxIter = W * H * 2;
+  let iter = 0;
+  let secondVisit = false;
 
-  // Simplify with Douglas-Peucker to reduce vertex count
+  do {
+    pts.push({ x: cx, y: cy });
+    // Search clockwise from backDir+1
+    let found = false;
+    for (let k = 1; k <= 8; k++) {
+      const d = (backDir + k) % 8;
+      const nx = cx + dx8[d], ny = cy + dy8[d];
+      if (nx >= 0 && nx < W && ny >= 0 && ny < H && mask[ny * W + nx]) {
+        // Update backDir: direction we came from = opposite of d
+        backDir = (d + 4) % 8;
+        cx = nx; cy = ny;
+        found = true;
+        break;
+      }
+    }
+    if (!found) break; // isolated pixel
+
+    // Jacob's stopping: stop when we revisit start after at least 2 steps
+    if (cx === startX && cy === startY) {
+      if (secondVisit) break;
+      secondVisit = true;
+    }
+  } while (++iter < maxIter);
+
+  if (pts.length < 4) return null;
+
+  // Douglas-Peucker simplification — epsilon scales with image size
   function dpSimplify(pts, eps) {
     if (pts.length <= 2) return pts;
     let maxD = 0, idx = 0;
-    const [p0, pN] = [pts[0], pts[pts.length - 1]];
+    const p0 = pts[0], pN = pts[pts.length - 1];
     const dx = pN.x - p0.x, dy = pN.y - p0.y;
     const len = Math.sqrt(dx*dx + dy*dy) || 1;
     for (let i = 1; i < pts.length - 1; i++) {
@@ -731,15 +740,27 @@ function alphaToShape(px, W, H, threshold) {
     return [p0, pN];
   }
 
-  const simplified = dpSimplify(rawPts, 1.5);
+  // Use smaller epsilon for finer shapes (0.5px at 256 res)
+  const simplified = dpSimplify(pts, 0.8);
+  if (simplified.length < 3) return null;
 
-  // Convert pixel coords → world coords centered at origin, range ~[-1,1]
-  const scaleX = 2.0 / W;
-  const scaleY = 2.0 / H;
+  // Find tight bounding box of contour for accurate centering + scaling
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const p of simplified) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  const bW = maxX - minX || 1;
+  const bH = maxY - minY || 1;
+  // Scale to fit in [-1,1] x [-1,1], preserve aspect ratio
+  const scaleF = 2.0 / Math.max(bW, bH);
+
   const shape = new THREE.Shape();
   simplified.forEach((p, i) => {
-    const wx = (p.x - W / 2) * scaleX;
-    const wy = -(p.y - H / 2) * scaleY; // flip Y
+    const wx = (p.x - minX - bW / 2) * scaleF;
+    const wy = -(p.y - minY - bH / 2) * scaleF; // flip Y
     i === 0 ? shape.moveTo(wx, wy) : shape.lineTo(wx, wy);
   });
   shape.closePath();
@@ -808,16 +829,11 @@ function buildPNGGeometry(dataURL) {
         curveSegments: 32,
       };
       const geometry = new THREE.ExtrudeGeometry(shape, extrudeOpts);
-      geometry.computeVertexNormals();
+            geometry.computeVertexNormals();
 
-      // Center geometry
-      geometry.computeBoundingBox();
-      const bb = geometry.boundingBox;
-      geometry.translate(
-        -(bb.max.x + bb.min.x) / 2,
-        -(bb.max.y + bb.min.y) / 2,
-        -currentDepth / 2
-      );
+      // Shape is already centered by alphaToShape bounding box normalization
+      // Only shift Z to center depth
+      geometry.translate(0, 0, -currentDepth / 2);
 
       const layer = layers[0] || { color: '#c0a060' };
       const material = new THREE.MeshStandardMaterial({
