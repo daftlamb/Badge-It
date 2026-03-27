@@ -792,91 +792,99 @@
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
 
-    // Composer (bloom always available; DOF only in perspective mode)
+    // Unified composer (supports both bloom and DOF)
     let composer = null;
-    let bloomComposer = null;
-    let bokehPass = null;
     let bloomPass = null;
+    let bokehPass = null;
     let renderPass = null;
     let useBloom = false;
 
-    function buildBloomComposer() {
-      if (bloomComposer) { bloomComposer.dispose(); bloomComposer = null; }
-      const W = canvasArea.clientWidth, H = canvasArea.clientHeight;
-      const cam = usePerspective ? perspCam : camera;
-      bloomComposer = new EffectComposer(renderer);
-      const rp = new RenderPass(scene, cam);
-      bloomComposer.addPass(rp);
-      bloomPass = new UnrealBloomPass(
-        new THREE.Vector2(W, H),
-        parseFloat(document.getElementById('bloom-strength').value),
-        parseFloat(document.getElementById('bloom-radius').value),
-        parseFloat(document.getElementById('bloom-threshold').value)
-      );
-      bloomComposer.addPass(bloomPass);
-      const outputPass = new OutputPass();
-      bloomComposer.addPass(outputPass);
-    }
-
-    function buildComposer() {
+    function rebuildComposer() {
       if (composer) { composer.dispose(); composer = null; }
       const W = canvasArea.clientWidth, H = canvasArea.clientHeight;
+      const cam = usePerspective ? perspCam : camera;
       composer = new EffectComposer(renderer);
-      renderPass = new RenderPass(scene, perspCam);
+      renderPass = new RenderPass(scene, cam);
       composer.addPass(renderPass);
 
-      // Auto-calc focus
-      let autoFocus = parseFloat(document.getElementById('dof-focus').value);
-      if (mesh) {
-        const bbox = new THREE.Box3().setFromObject(mesh);
-        const center = bbox.getCenter(new THREE.Vector3());
-        const dist = perspCam.position.distanceTo(center);
-        const near = perspCam.near, far = perspCam.far;
-        autoFocus = (far * (dist - near)) / (dist * (far - near));
-        autoFocus = Math.max(0, Math.min(1, autoFocus));
-        document.getElementById('dof-focus').value = autoFocus.toFixed(3);
-        document.getElementById('dof-focus-val').value = autoFocus.toFixed(3);
+      // Add bloom if enabled
+      if (useBloom) {
+        bloomPass = new UnrealBloomPass(
+          new THREE.Vector2(W, H),
+          parseFloat(document.getElementById('bloom-strength').value),
+          parseFloat(document.getElementById('bloom-radius').value),
+          parseFloat(document.getElementById('bloom-threshold').value)
+        );
+        composer.addPass(bloomPass);
       }
 
-      bokehPass = new BokehPass(scene, perspCam, {
-        focus: autoFocus,
-        aperture: parseFloat(document.getElementById('dof-aperture').value),
-        maxblur: parseFloat(document.getElementById('dof-maxblur').value),
-      });
-      bokehPass.renderToScreen = true;
-      composer.addPass(bokehPass);
+      // Add DOF if perspective mode
+      if (usePerspective) {
+        let autoFocus = parseFloat(document.getElementById('dof-focus').value);
+        if (mesh) {
+          const bbox = new THREE.Box3().setFromObject(mesh);
+          const center = bbox.getCenter(new THREE.Vector3());
+          const dist = perspCam.position.distanceTo(center);
+          const near = perspCam.near, far = perspCam.far;
+          autoFocus = (far * (dist - near)) / (dist * (far - near));
+          autoFocus = Math.max(0, Math.min(1, autoFocus));
+          document.getElementById('dof-focus').value = autoFocus.toFixed(3);
+          document.getElementById('dof-focus-val').value = autoFocus.toFixed(3);
+        }
+        bokehPass = new BokehPass(scene, perspCam, {
+          focus: autoFocus,
+          aperture: parseFloat(document.getElementById('dof-aperture').value),
+          maxblur: parseFloat(document.getElementById('dof-maxblur').value),
+        });
+        composer.addPass(bokehPass);
+      }
+
+      const outputPass = new OutputPass();
+      composer.addPass(outputPass);
     }
 
     function switchToPerspective(on) {
       usePerspective = on;
       document.getElementById('dof-controls').style.display = on ? '' : 'none';
       if (on) {
-        // Copy ortho camera's view direction to perspective cam
         perspCam.position.copy(camera.position);
         perspCam.quaternion.copy(camera.quaternion);
         perspCam.aspect = canvasArea.clientWidth / canvasArea.clientHeight;
         perspCam.updateProjectionMatrix();
-        // Re-bind OrbitControls to perspCam
         controls.object = perspCam;
         activeCamera = perspCam;
-        buildComposer();
       } else {
         controls.object = camera;
         activeCamera = camera;
-        if (composer) { composer.dispose(); composer = null; }
       }
+      if (useBloom || usePerspective) rebuildComposer();
+      else if (composer) { composer.dispose(); composer = null; }
     }
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    // Studio lighting with spotlight + shadows
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
     scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    dirLight.position.set(1, 2, 1);
-    scene.add(dirLight);
+    
+    const spotLight = new THREE.SpotLight(0xffffff, 2.5);
+    spotLight.position.set(3, 4, 2);
+    spotLight.angle = Math.PI / 6;
+    spotLight.penumbra = 0.3;
+    spotLight.decay = 2;
+    spotLight.distance = 20;
+    spotLight.castShadow = true;
+    spotLight.shadow.mapSize.width = 1024;
+    spotLight.shadow.mapSize.height = 1024;
+    scene.add(spotLight);
+    
     const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
-    fillLight.position.set(-1, 0.5, -1);
+    fillLight.position.set(-2, 1, -1);
     scene.add(fillLight);
-    const rimLight = new THREE.DirectionalLight(0xffffff, 0.6);
-    rimLight.position.set(0, -1, -2);
+    
+    const rimLight = new THREE.DirectionalLight(0xaaccff, 0.5);
+    rimLight.position.set(0, -1, -3);
     scene.add(rimLight);
 
     const mat = new THREE.MeshStandardMaterial({
@@ -1249,9 +1257,7 @@
       if (autoRotate && mesh) {
         mesh.rotation.y += AUTO_ROTATE_SPEED;
       }
-      if (useBloom && bloomComposer) {
-        bloomComposer.render();
-      } else if (usePerspective && composer) {
+      if ((useBloom || usePerspective) && composer) {
         composer.render();
       } else {
         renderer.render(scene, camera);
@@ -1272,8 +1278,8 @@
     document.getElementById('bloom-toggle').addEventListener('change', (e) => {
       useBloom = e.target.checked;
       document.getElementById('bloom-controls').style.display = useBloom ? '' : 'none';
-      if (useBloom) buildBloomComposer();
-      else if (bloomComposer) { bloomComposer.dispose(); bloomComposer = null; }
+      if (useBloom || usePerspective) rebuildComposer();
+      else if (composer) { composer.dispose(); composer = null; }
     });
     bindSlider('bloom-strength', 'bloom-strength-val', v => { if (bloomPass) bloomPass.strength = v; });
     bindSlider('bloom-radius', 'bloom-radius-val', v => { if (bloomPass) bloomPass.radius = v; });
@@ -1298,7 +1304,6 @@
       perspCam.updateProjectionMatrix();
       renderer.setSize(w, h);
       if (composer) composer.setSize(w, h);
-      if (bloomComposer) bloomComposer.setSize(w, h);
       updateCanvasFrame();
     }
     window.addEventListener('resize', onResize);
@@ -1921,12 +1926,12 @@
     // PNG download — no paywall, direct
     document.getElementById('btn-download').addEventListener('click', doCanvasExport);
 
-    // Reset view button
+    // Reset view button — front orthographic view
     document.getElementById('btn-reset-view').addEventListener('click', function() {
-      const defaultPos = new THREE.Vector3(3, 2.5, 3);
-      camera.position.copy(defaultPos);
+      const frontPos = new THREE.Vector3(0, 0, 5);
+      camera.position.copy(frontPos);
       camera.lookAt(0, 0, 0);
-      perspCam.position.copy(defaultPos);
+      perspCam.position.copy(frontPos);
       perspCam.lookAt(0, 0, 0);
       if (mesh) {
         const bbox = new THREE.Box3().setFromObject(mesh);
