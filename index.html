@@ -68,6 +68,79 @@ select{background:#2a2a2a;color:#ccc;border:1px solid var(--border);padding:2px 
 }
 #toolbar button:hover{background:rgba(60,60,60,0.9);}
 .hidden{display:none!important;}
+
+/* ─── MOBILE ──────────────────────────────────────────── */
+#mobile-toggle{display:none;}
+#drawer-backdrop{display:none;}
+@media(max-width:600px){
+  body{flex-direction:column;}
+
+  /* Canvas takes full screen */
+  #canvas-wrap{
+    position:fixed;inset:0;
+    width:100vw;height:100vh;
+    z-index:1;
+  }
+
+  /* Mobile toggle button — bottom center */
+  #mobile-toggle{
+    display:flex;
+    position:fixed;
+    bottom:16px;left:50%;transform:translateX(-50%);
+    z-index:20;
+    background:rgba(28,28,28,0.92);
+    border:1px solid var(--border);
+    color:#ccc;font-size:12px;
+    padding:8px 22px;border-radius:20px;
+    cursor:pointer;gap:6px;align-items:center;
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    white-space:nowrap;
+  }
+
+  /* Backdrop */
+  #drawer-backdrop{
+    display:none;position:fixed;inset:0;
+    background:rgba(0,0,0,0.5);z-index:30;
+  }
+  #drawer-backdrop.open{display:block;}
+
+  /* Panel = bottom drawer */
+  #panel{
+    position:fixed;bottom:0;left:0;right:0;
+    width:100%!important;max-width:100%!important;min-width:0!important;
+    height:72vh;
+    border-right:none;border-top:1px solid var(--border);
+    border-radius:16px 16px 0 0;
+    z-index:40;
+    transform:translateY(100%);
+    transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);
+    font-size:13px;
+  }
+  #panel.open{transform:translateY(0);}
+
+  /* Drag handle */
+  #panel::before{
+    content:'';display:block;
+    width:36px;height:4px;
+    background:#555;border-radius:2px;
+    margin:10px auto 6px;
+    flex-shrink:0;
+  }
+
+  /* Make rows & controls bigger for touch */
+  .row{margin-bottom:8px;}
+  .panel-section{padding:12px 14px;}
+  .section-title{font-size:11px;margin-bottom:10px;}
+  .btn{padding:7px 12px;font-size:12px;}
+  input[type=range]{height:24px;}
+  select{padding:6px 8px;font-size:13px;}
+  #upload-zone{height:90px;}
+  #upload-zone .plus{font-size:42px;}
+
+  /* Toolbar shift up so it's not hidden behind drawer toggle */
+  #toolbar{bottom:72px;top:auto;right:10px;}
+}
 </style>
 <script type="importmap">
 {
@@ -320,6 +393,10 @@ select{background:#2a2a2a;color:#ccc;border:1px solid var(--border);padding:2px 
   </div>
 
 </div><!-- end panel -->
+
+<!-- MOBILE DRAWER CONTROLS -->
+<div id="drawer-backdrop"></div>
+<button id="mobile-toggle">⚙ Controls</button>
 
 <!-- CANVAS AREA -->
 <div id="canvas-wrap">
@@ -1073,6 +1150,32 @@ window.addEventListener('resize', () => {
   renderer.setSize(W(), H());
   composer.setSize(W(), H());
 });
+
+// ─── MOBILE DRAWER ───────────────────────────────────────────────────────────
+(function() {
+  const panel = document.getElementById('panel');
+  const toggle = document.getElementById('mobile-toggle');
+  const backdrop = document.getElementById('drawer-backdrop');
+  function openDrawer() {
+    panel.classList.add('open');
+    backdrop.classList.add('open');
+    toggle.textContent = '✕ Close';
+  }
+  function closeDrawer() {
+    panel.classList.remove('open');
+    backdrop.classList.remove('open');
+    toggle.textContent = '⚙ Controls';
+  }
+  toggle.addEventListener('click', () => panel.classList.contains('open') ? closeDrawer() : openDrawer());
+  backdrop.addEventListener('click', closeDrawer);
+
+  // Swipe down to close
+  let startY = 0;
+  panel.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, {passive:true});
+  panel.addEventListener('touchend', e => {
+    if (e.changedTouches[0].clientY - startY > 60) closeDrawer();
+  }, {passive:true});
+})();
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 rebuildMesh();
