@@ -165,7 +165,7 @@ select{background:#2a2a2a;color:#ccc;border:1px solid var(--border);padding:2px 
     <div class="section-title">Upload</div>
     <div id="upload-zone" onclick="document.getElementById('svg-input').click()">
       <div class="plus">+</div>
-      <div class="hint">PNG or SVG</div>
+      <div class="hint">SVG · PNG (transparent bg)</div>
     </div>
     <input type="file" id="svg-input" accept=".png,.svg" style="display:none"/>
     <button class="btn" id="btn-clear-svg" style="width:100%;font-size:10px;margin-bottom:4px;">Clear</button>
@@ -757,26 +757,16 @@ function buildPNGGeometry(dataURL) {
       ctx.drawImage(img, 0, 0, SIZE, SIZE);
       const px = ctx.getImageData(0, 0, SIZE, SIZE).data;
 
-      // Check if PNG has real alpha, otherwise use brightness threshold
-      let hasRealAlpha = false;
-      for (let i = 0; i < SIZE * SIZE; i++) {
-        if (px[i*4+3] < 200) { hasRealAlpha = true; break; }
-      }
-
-      // Build alpha mask — if no real alpha, threshold grayscale (dark = opaque)
-      const threshold = hasRealAlpha ? 128 : 200;
-      if (!hasRealAlpha) {
-        // Invert: dark pixels are "shape", light is background
-        // Rewrite alpha channel based on grayscale darkness
-        for (let i = 0; i < SIZE * SIZE; i++) {
-          const lum = px[i*4]*0.299 + px[i*4+1]*0.587 + px[i*4+2]*0.114;
-          px[i*4+3] = lum < 200 ? 255 : 0;
-        }
-      }
+      // Require transparent PNG — alpha channel defines the shape
+      const threshold = 128;
 
       // Trace contour → Three.js Shape
       const shape = alphaToShape(px, SIZE, SIZE, threshold - 1);
-      if (!shape) { resolve(null); return; }
+      if (!shape) {
+        alert('No transparent shape detected.\nPlease use a PNG with a transparent background.');
+        resolve(null);
+        return;
+      }
 
       // Color map
       const colorMap = new THREE.CanvasTexture(c);
