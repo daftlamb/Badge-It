@@ -542,7 +542,8 @@ let bloomPass = new UnrealBloomPass(new THREE.Vector2(W(),H()), 0.4, 0.3, 0.85);
 bloomPass.enabled = false;
 composer.addPass(bloomPass);
 
-let bokehPass = new BokehPass(scene, camera, {focus:1,aperture:0.0025,maxblur:0.01});
+// BokehPass requires PerspectiveCamera (needs .aspect) — always pass camPersp
+let bokehPass = new BokehPass(scene, camPersp, {focus:1,aperture:0.0025,maxblur:0.01});
 bokehPass.enabled = false;
 composer.addPass(bokehPass);
 
@@ -1026,9 +1027,9 @@ document.getElementById('perspective-toggle').addEventListener('change', e => {
   controls.object = camera;
   controls.update();
   // rebuild composer passes with new camera
-  composer.passes.forEach(p => { if (p.camera !== undefined) p.camera = camera; });
   renderPass.camera = camera;
-  bokehPass.camera = camera;
+  // BokehPass always uses camPersp (needs .aspect from PerspectiveCamera)
+  bokehPass.camera = camPersp;
 });
 document.getElementById('canvas-preview-toggle').addEventListener('change', e => {
   // no-op placeholder for preview toggle
