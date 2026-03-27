@@ -554,6 +554,7 @@ let useComposer = false;
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let currentSVGString = null;
+let currentPNGDataURL = null;
 let currentShape = 'circle';
 let currentDepth = 0.3;
 let bevelEnabled = true;
@@ -657,6 +658,83 @@ function buildPresetGeometry(shape) {
 }
 
 // ─── SVG GEOMETRY ─────────────────────────────────────────────────────────────
+
+// ─── PNG GEOMETRY ────────────────────────────────────────────────────────────
+// PNG mode: alpha channel = shape contour (alphaMap), grayscale = emboss height (normalMap)
+function buildPNGGeometry(dataURL) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const SIZE = 256;
+      const c = document.createElement('canvas');
+      c.width = SIZE; c.height = SIZE;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, SIZE, SIZE);
+      const px = ctx.getImageData(0, 0, SIZE, SIZE).data;
+
+      // Build alpha map texture (shape mask)
+      const alphaCanvas = document.createElement('canvas');
+      alphaCanvas.width = SIZE; alphaCanvas.height = SIZE;
+      const actx = alphaCanvas.getContext('2d');
+      const aImg = actx.createImageData(SIZE, SIZE);
+      for (let i = 0; i < SIZE * SIZE; i++) {
+        const a = px[i * 4 + 3];
+        aImg.data[i*4]   = 255;
+        aImg.data[i*4+1] = 255;
+        aImg.data[i*4+2] = 255;
+        aImg.data[i*4+3] = a;
+      }
+      actx.putImageData(aImg, 0, 0);
+      const alphaMap = new THREE.CanvasTexture(alphaCanvas);
+
+      // Build color map from original image
+      const colorMap = new THREE.CanvasTexture(c);
+      colorMap.colorSpace = THREE.SRGBColorSpace;
+
+      // Build Sobel normalMap from grayscale
+      const nmCanvas = document.createElement('canvas');
+      nmCanvas.width = SIZE; nmCanvas.height = SIZE;
+      const nctx = nmCanvas.getContext('2d');
+      const nmImg = nctx.createImageData(SIZE, SIZE);
+      const gray = new Float32Array(SIZE * SIZE);
+      for (let i = 0; i < SIZE * SIZE; i++) {
+        gray[i] = (px[i*4]*0.299 + px[i*4+1]*0.587 + px[i*4+2]*0.114) / 255;
+      }
+      for (let y = 1; y < SIZE-1; y++) {
+        for (let x = 1; x < SIZE-1; x++) {
+          const gx = -gray[(y-1)*SIZE+(x-1)] + gray[(y-1)*SIZE+(x+1)]
+                   - 2*gray[y*SIZE+(x-1)]    + 2*gray[y*SIZE+(x+1)]
+                   - gray[(y+1)*SIZE+(x-1)]  + gray[(y+1)*SIZE+(x+1)];
+          const gy = -gray[(y-1)*SIZE+(x-1)] - 2*gray[(y-1)*SIZE+x] - gray[(y-1)*SIZE+(x+1)]
+                   + gray[(y+1)*SIZE+(x-1)]  + 2*gray[(y+1)*SIZE+x] + gray[(y+1)*SIZE+(x+1)];
+          const idx = (y*SIZE+x)*4;
+          nmImg.data[idx]   = Math.round((gx * 0.5 + 0.5) * 255);
+          nmImg.data[idx+1] = Math.round((gy * 0.5 + 0.5) * 255);
+          nmImg.data[idx+2] = 255;
+          nmImg.data[idx+3] = 255;
+        }
+      }
+      nctx.putImageData(nmImg, 0, 0);
+      const normalMapTex = new THREE.CanvasTexture(nmCanvas);
+
+      // Use current shape as base geometry, apply PNG as texture
+      const geom = buildPresetGeometry(currentShape);
+      const layer = layers[0] || { color: '#dcdcdc' };
+      const mat = new THREE.MeshStandardMaterial({
+        map: colorMap,
+        alphaMap: alphaMap,
+        transparent: true,
+        normalMap: normalMapTex,
+        normalScale: new THREE.Vector2(2, 2),
+        metalness: currentMetalness,
+        roughness: currentRoughness,
+        side: THREE.DoubleSide,
+      });
+      resolve(new THREE.Mesh(geom, mat));
+    };
+    img.src = dataURL;
+  });
+}
 
 function buildSVGGeometry(svgStr) {
   const loader = new SVGLoader();
@@ -822,28 +900,32 @@ function applyMatcapAndNormal() {
   }
 }
 
-function rebuildMesh() {
-  clearMesh();
-  let obj;
-  if (currentSVGString) {
-    obj = buildSVGGeometry(currentSVGString);
-  } else {
-    obj = new THREE.Mesh(buildPresetGeometry(currentShape), new THREE.MeshStandardMaterial({
-      color: new THREE.Color(currentColor),
-      metalness: currentMetalness,
-      roughness: currentRoughness,
-    }));
-  }
+function finalizeMesh(obj) {
   if (!obj) return;
+  clearMesh();
   mesh = obj;
   scene.add(mesh);
   const bbox = new THREE.Box3().setFromObject(mesh);
   const center = bbox.getCenter(new THREE.Vector3());
   controls.target.copy(center);
   controls.update();
-  // Re-apply matcap/normal after rebuild
   if (currentMatcap !== 'none' || currentNormalMap !== 'none') {
     applyMatcapAndNormal();
+  }
+}
+
+function rebuildMesh() {
+  if (currentPNGDataURL) {
+    // PNG mode: async
+    buildPNGGeometry(currentPNGDataURL).then(finalizeMesh);
+  } else if (currentSVGString) {
+    finalizeMesh(buildSVGGeometry(currentSVGString));
+  } else {
+    finalizeMesh(new THREE.Mesh(buildPresetGeometry(currentShape), new THREE.MeshStandardMaterial({
+      color: new THREE.Color(currentColor),
+      metalness: currentMetalness,
+      roughness: currentRoughness,
+    })));
   }
 }
 
@@ -935,20 +1017,27 @@ document.getElementById('svg-input').addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = ev => {
-    if (file.name.endsWith('.svg')) {
+  if (file.name.toLowerCase().endsWith('.svg') || file.type === 'image/svg+xml') {
+    reader.onload = ev => {
       currentSVGString = ev.target.result;
-    } else {
-      // PNG: reset SVG, use shape preset with color from image (future: PNG emboss)
+      currentPNGDataURL = null;
+      rebuildMesh();
+    };
+    reader.readAsText(file);
+  } else {
+    // PNG/JPG: read as data URL
+    reader.onload = ev => {
+      currentPNGDataURL = ev.target.result;
       currentSVGString = null;
-    }
-    rebuildMesh();
-  };
-  reader.readAsText(file);
+      rebuildMesh();
+    };
+    reader.readAsDataURL(file);
+  }
 });
 
 document.getElementById('btn-clear-svg').addEventListener('click', () => {
   currentSVGString = null;
+  currentPNGDataURL = null;
   document.getElementById('svg-input').value = '';
   rebuildMesh();
 });
