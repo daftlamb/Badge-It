@@ -1139,11 +1139,15 @@ document.getElementById('btn-export').addEventListener('click', () => {
 
 // Reset cam
 document.getElementById('btn-reset-cam').addEventListener('click', () => {
-  camera.position.set(0, 0, 8);
-  camera.lookAt(0, 0, 0);
+  camOrtho.position.set(0, 0, 8);
+  camOrtho.lookAt(0, 0, 0);
+  camOrtho.zoom = 1;
+  camOrtho.updateProjectionMatrix();
   camPersp.position.set(0, 0, 8);
   camPersp.lookAt(0, 0, 0);
+  camPersp.updateProjectionMatrix();
   controls.target.set(0, 0, 0);
+  controls.object = camera;
   controls.update();
 });
 
