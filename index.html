@@ -661,6 +661,91 @@ function buildPresetGeometry(shape) {
 
 // ─── PNG GEOMETRY ────────────────────────────────────────────────────────────
 // PNG mode: image texture mapped onto current shape geometry
+// ─── PNG → ALPHA CONTOUR → ExtrudeGeometry ───────────────────────────────────
+// Traces the alpha channel boundary using a blob-walking algorithm,
+// then builds a Three.js Shape and extrudes it with user-defined depth.
+
+function alphaToShape(px, W, H, threshold) {
+  // Downsample to a binary mask first for speed
+  const mask = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    mask[i] = px[i * 4 + 3] > threshold ? 1 : 0;
+  }
+
+  // Find the largest connected blob's boundary using Moore neighborhood tracing
+  // Returns array of {x,y} contour points in [0,W] x [0,H] space
+  function traceBoundary(startX, startY) {
+    const pts = [];
+    // 8-direction clockwise: E, SE, S, SW, W, NW, N, NE
+    const dx = [1,1,0,-1,-1,-1,0,1];
+    const dy = [0,1,1,1,0,-1,-1,-1];
+    let cx = startX, cy = startY;
+    let dir = 6; // start looking North
+    const maxPts = W * H;
+    let steps = 0;
+    do {
+      pts.push({x: cx, y: cy});
+      // Turn left from current direction, then find next boundary pixel
+      let d = (dir + 6) % 8;
+      for (let k = 0; k < 8; k++) {
+        const nx = cx + dx[d], ny = cy + dy[d];
+        if (nx >= 0 && nx < W && ny >= 0 && ny < H && mask[ny * W + nx]) {
+          cx = nx; cy = ny; dir = d;
+          break;
+        }
+        d = (d + 1) % 8;
+      }
+      if (++steps > maxPts) break;
+    } while (cx !== startX || cy !== startY);
+    return pts;
+  }
+
+  // Find first foreground pixel (top-left scan)
+  let startX = -1, startY = -1;
+  outer: for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (mask[y * W + x]) { startX = x; startY = y; break outer; }
+    }
+  }
+  if (startX < 0) return null;
+
+  const rawPts = traceBoundary(startX, startY);
+  if (rawPts.length < 6) return null;
+
+  // Simplify with Douglas-Peucker to reduce vertex count
+  function dpSimplify(pts, eps) {
+    if (pts.length <= 2) return pts;
+    let maxD = 0, idx = 0;
+    const [p0, pN] = [pts[0], pts[pts.length - 1]];
+    const dx = pN.x - p0.x, dy = pN.y - p0.y;
+    const len = Math.sqrt(dx*dx + dy*dy) || 1;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const d = Math.abs(dy*(pts[i].x - p0.x) - dx*(pts[i].y - p0.y)) / len;
+      if (d > maxD) { maxD = d; idx = i; }
+    }
+    if (maxD > eps) {
+      const a = dpSimplify(pts.slice(0, idx + 1), eps);
+      const b = dpSimplify(pts.slice(idx), eps);
+      return a.slice(0, -1).concat(b);
+    }
+    return [p0, pN];
+  }
+
+  const simplified = dpSimplify(rawPts, 1.5);
+
+  // Convert pixel coords → world coords centered at origin, range ~[-1,1]
+  const scaleX = 2.0 / W;
+  const scaleY = 2.0 / H;
+  const shape = new THREE.Shape();
+  simplified.forEach((p, i) => {
+    const wx = (p.x - W / 2) * scaleX;
+    const wy = -(p.y - H / 2) * scaleY; // flip Y
+    i === 0 ? shape.moveTo(wx, wy) : shape.lineTo(wx, wy);
+  });
+  shape.closePath();
+  return shape;
+}
+
 function buildPNGGeometry(dataURL) {
   return new Promise(resolve => {
     const img = new Image();
@@ -669,48 +754,84 @@ function buildPNGGeometry(dataURL) {
       const c = document.createElement('canvas');
       c.width = SIZE; c.height = SIZE;
       const ctx = c.getContext('2d');
-      // White background first (so transparent PNGs show correctly)
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, SIZE, SIZE);
       ctx.drawImage(img, 0, 0, SIZE, SIZE);
       const px = ctx.getImageData(0, 0, SIZE, SIZE).data;
 
-      // Color map — original image colors
+      // Check if PNG has real alpha, otherwise use brightness threshold
+      let hasRealAlpha = false;
+      for (let i = 0; i < SIZE * SIZE; i++) {
+        if (px[i*4+3] < 200) { hasRealAlpha = true; break; }
+      }
+
+      // Build alpha mask — if no real alpha, threshold grayscale (dark = opaque)
+      const threshold = hasRealAlpha ? 128 : 200;
+      if (!hasRealAlpha) {
+        // Invert: dark pixels are "shape", light is background
+        // Rewrite alpha channel based on grayscale darkness
+        for (let i = 0; i < SIZE * SIZE; i++) {
+          const lum = px[i*4]*0.299 + px[i*4+1]*0.587 + px[i*4+2]*0.114;
+          px[i*4+3] = lum < 200 ? 255 : 0;
+        }
+      }
+
+      // Trace contour → Three.js Shape
+      const shape = alphaToShape(px, SIZE, SIZE, threshold - 1);
+      if (!shape) { resolve(null); return; }
+
+      // Color map
       const colorMap = new THREE.CanvasTexture(c);
       colorMap.colorSpace = THREE.SRGBColorSpace;
 
-      // Sobel normalMap from grayscale for emboss effect
+      // Sobel normal map for surface emboss
       const nmCanvas = document.createElement('canvas');
       nmCanvas.width = SIZE; nmCanvas.height = SIZE;
       const nctx = nmCanvas.getContext('2d');
-      const nmImg = nctx.createImageData(SIZE, SIZE);
+      const nmData = nctx.createImageData(SIZE, SIZE);
       const gray = new Float32Array(SIZE * SIZE);
       for (let i = 0; i < SIZE * SIZE; i++) {
         gray[i] = (px[i*4]*0.299 + px[i*4+1]*0.587 + px[i*4+2]*0.114) / 255;
       }
-      for (let y = 0; y < SIZE; y++) {
-        for (let x = 0; x < SIZE; x++) {
-          const gx = (x > 0 && x < SIZE-1)
-            ? (-gray[(y > 0 ? y-1 : y)*SIZE+(x-1)] + gray[(y > 0 ? y-1 : y)*SIZE+(x+1)]
-               - 2*gray[y*SIZE+(x-1)] + 2*gray[y*SIZE+(x+1)]
-               - gray[(y < SIZE-1 ? y+1 : y)*SIZE+(x-1)] + gray[(y < SIZE-1 ? y+1 : y)*SIZE+(x+1)]) : 0;
-          const gy = (y > 0 && y < SIZE-1)
-            ? (-gray[(y-1)*SIZE+(x > 0 ? x-1 : x)] - 2*gray[(y-1)*SIZE+x] - gray[(y-1)*SIZE+(x < SIZE-1 ? x+1 : x)]
-               + gray[(y+1)*SIZE+(x > 0 ? x-1 : x)] + 2*gray[(y+1)*SIZE+x] + gray[(y+1)*SIZE+(x < SIZE-1 ? x+1 : x)]) : 0;
+      for (let y = 1; y < SIZE-1; y++) {
+        for (let x = 1; x < SIZE-1; x++) {
+          const gx = -gray[(y-1)*SIZE+(x-1)] + gray[(y-1)*SIZE+(x+1)]
+                   - 2*gray[y*SIZE+(x-1)]    + 2*gray[y*SIZE+(x+1)]
+                   - gray[(y+1)*SIZE+(x-1)]  + gray[(y+1)*SIZE+(x+1)];
+          const gy = -gray[(y-1)*SIZE+(x-1)] - 2*gray[(y-1)*SIZE+x] - gray[(y-1)*SIZE+(x+1)]
+                   + gray[(y+1)*SIZE+(x-1)]  + 2*gray[(y+1)*SIZE+x] + gray[(y+1)*SIZE+(x+1)];
           const idx = (y*SIZE+x)*4;
-          nmImg.data[idx]   = Math.round(Math.min(255, Math.max(0, gx * 2 * 127 + 128)));
-          nmImg.data[idx+1] = Math.round(Math.min(255, Math.max(0, gy * 2 * 127 + 128)));
-          nmImg.data[idx+2] = 255;
-          nmImg.data[idx+3] = 255;
+          nmData.data[idx]   = Math.round(Math.min(255, Math.max(0, gx*127+128)));
+          nmData.data[idx+1] = Math.round(Math.min(255, Math.max(0, gy*127+128)));
+          nmData.data[idx+2] = 255;
+          nmData.data[idx+3] = 255;
         }
       }
-      nctx.putImageData(nmImg, 0, 0);
+      nctx.putImageData(nmData, 0, 0);
       const normalMapTex = new THREE.CanvasTexture(nmCanvas);
-      normalMapTex.wrapS = normalMapTex.wrapT = THREE.RepeatWrapping;
 
-      // Build geometry from current shape
-      const geom = buildPresetGeometry(currentShape);
-      const mat = new THREE.MeshStandardMaterial({
+      // ExtrudeGeometry from traced shape
+      const extrudeOpts = {
+        depth: currentDepth,
+        bevelEnabled,
+        bevelThickness: currentBevelThickness,
+        bevelSize: currentBevelSize,
+        bevelSegments: currentBevelSegments,
+        curveSegments: 32,
+      };
+      const geometry = new THREE.ExtrudeGeometry(shape, extrudeOpts);
+      geometry.computeVertexNormals();
+
+      // Center geometry
+      geometry.computeBoundingBox();
+      const bb = geometry.boundingBox;
+      geometry.translate(
+        -(bb.max.x + bb.min.x) / 2,
+        -(bb.max.y + bb.min.y) / 2,
+        -currentDepth / 2
+      );
+
+      const layer = layers[0] || { color: '#c0a060' };
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(layer.color),
         map: colorMap,
         normalMap: normalMapTex,
         normalScale: new THREE.Vector2(1.5, 1.5),
@@ -718,12 +839,10 @@ function buildPNGGeometry(dataURL) {
         roughness: currentRoughness,
         side: THREE.DoubleSide,
       });
-      resolve(new THREE.Mesh(geom, mat));
+
+      resolve(new THREE.Mesh(geometry, material));
     };
-    img.onerror = () => {
-      console.error('PNG load failed');
-      resolve(null);
-    };
+    img.onerror = () => { console.error('PNG load failed'); resolve(null); };
     img.src = dataURL;
   });
 }
