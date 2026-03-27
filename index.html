@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Badge It</title>
+  <title>Badge It — 3D Badge Generator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
   <script type="importmap">
@@ -16,64 +16,64 @@
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #111; --panel: #1c1c1c; --border: #2e2e2e;
-      --text: #e0e0e0; --muted: #666; --accent: #fff;
-      --btn-bg: #2a2a2a; --btn-hover: #333;
-    }
-    body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
-    #panel { width: 210px; min-width: 210px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
-    #panel::-webkit-scrollbar { width: 4px; }
-    #panel::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-    .panel-logo { padding: 18px 16px 12px; font-size: 15px; font-weight: 500; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); color: var(--accent); }
-    .section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
-    .section-label { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; display: block; }
-    #upload-zone { border: 1.5px dashed var(--border); border-radius: 8px; padding: 20px 12px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
-    #upload-zone:hover, #upload-zone.drag-over { border-color: #555; background: #222; }
-    #upload-zone .upload-icon { font-size: 22px; margin-bottom: 6px; }
-    #upload-zone .upload-title { font-size: 12px; color: var(--text); margin-bottom: 4px; }
-    #upload-zone .upload-hint { font-size: 10px; color: var(--muted); line-height: 1.5; }
-    #upload-zone .upload-hint em { color: #888; font-style: normal; }
-    #svg-layers { margin-top: 8px; }
-    .layer-item { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--muted); padding: 4px 0; border-bottom: 1px solid #222; }
-    .layer-item button { background: none; border: none; color: #555; cursor: pointer; font-size: 12px; padding: 0 4px; }
-    .layer-item button:hover { color: #e55; }
-    #btn-add-layer { width: 100%; margin-top: 8px; background: var(--btn-bg); border: 1px solid var(--border); color: var(--muted); padding: 6px; border-radius: 5px; cursor: pointer; font-size: 11px; font-family: inherit; transition: background 0.15s; }
-    #btn-add-layer:hover { background: var(--btn-hover); color: var(--text); }
-    .slider-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-    .slider-row:last-child { margin-bottom: 0; }
-    .slider-label { font-size: 11px; color: var(--muted); width: 60px; flex-shrink: 0; }
-    .slider-row input[type=range] { flex: 1; accent-color: #888; height: 2px; cursor: pointer; }
-    .slider-val { font-size: 10px; color: var(--muted); width: 36px; text-align: right; flex-shrink: 0; }
-    .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .toggle-row:last-child { margin-bottom: 0; }
-    .toggle-label { font-size: 11px; color: var(--muted); }
-    .toggle-switch { position: relative; width: 30px; height: 16px; cursor: pointer; }
-    .toggle-switch input { display: none; }
-    .toggle-track { position: absolute; inset: 0; background: #333; border-radius: 8px; transition: background 0.2s; }
-    .toggle-switch input:checked ~ .toggle-track { background: #555; }
-    .toggle-thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; background: #888; border-radius: 50%; transition: left 0.2s, background 0.2s; }
-    .toggle-switch input:checked ~ .toggle-thumb { left: 16px; background: var(--accent); }
-    .mat-buttons { display: flex; gap: 6px; }
-    .mat-btn { flex: 1; padding: 7px 4px; background: var(--btn-bg); border: 1.5px solid transparent; border-radius: 6px; color: var(--muted); font-family: inherit; font-size: 11px; cursor: pointer; transition: all 0.15s; text-align: center; }
-    .mat-btn:hover { background: var(--btn-hover); color: var(--text); }
-    .mat-btn.active { border-color: #fff; color: var(--accent); }
-    .color-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .color-row:last-child { margin-bottom: 0; }
-    .color-label { font-size: 11px; color: var(--muted); flex: 1; }
-    .color-swatch { width: 26px; height: 20px; border-radius: 4px; border: 1px solid #444; cursor: pointer; overflow: hidden; }
-    .color-swatch input[type=color] { width: 200%; height: 200%; border: none; cursor: pointer; transform: translate(-25%,-25%); }
-    .text-input { width: 100%; background: var(--btn-bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text); padding: 7px 8px; font-family: inherit; font-size: 12px; outline: none; }
-    .text-input:focus { border-color: #444; }
-    .btn { padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--btn-bg); color: var(--text); font-family: inherit; font-size: 11px; cursor: pointer; transition: background 0.15s; text-align: center; }
-    .btn:hover { background: var(--btn-hover); }
-    .btn-row { display: flex; gap: 6px; }
-    .btn-row .btn { flex: 1; }
-    #canvas-area { flex: 1; position: relative; }
-    #canvas-area canvas { display: block; }
-    #empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); pointer-events: none; gap: 8px; }
-    #empty-state .es-icon { font-size: 48px; opacity: 0.3; }
-    #empty-state .es-text { font-size: 13px; }
+    :root { --bg:#111; --panel:#1c1c1c; --border:#2a2a2a; --text:#e0e0e0; --muted:#666; --accent:#fff; --btn-bg:#252525; --btn-hover:#2e2e2e; }
+    body { background:var(--bg); color:var(--text); font-family:'Outfit',sans-serif; font-size:13px; display:flex; height:100vh; overflow:hidden; }
+    #panel { width:210px; min-width:210px; background:var(--panel); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden; }
+    #panel::-webkit-scrollbar { width:4px; }
+    #panel::-webkit-scrollbar-thumb { background:#333; border-radius:2px; }
+    .panel-logo { padding:16px 16px 12px; font-size:14px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; border-bottom:1px solid var(--border); color:var(--accent); }
+    .sec { padding:12px 14px; border-bottom:1px solid var(--border); }
+    .sec-title { font-size:9px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; display:block; }
+    .upload-zone { border:1.5px dashed var(--border); border-radius:8px; padding:18px 10px; text-align:center; cursor:pointer; transition:border-color .15s,background .15s; position:relative; overflow:hidden; }
+    .upload-zone:hover,.upload-zone.drag-over { border-color:#555; background:#222; }
+    .upload-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .up-icon { font-size:20px; margin-bottom:5px; color:#555; }
+    .up-title { font-size:11px; color:var(--text); margin-bottom:3px; }
+    .up-hint { font-size:9px; color:var(--muted); line-height:1.55; }
+    .up-hint em { color:#777; font-style:normal; }
+    .up-fname { font-size:10px; color:var(--muted); margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #svg-layers { margin-top:8px; display:none; }
+    .layer-row { display:flex; align-items:center; gap:6px; padding:4px 0; border-bottom:1px solid #222; font-size:11px; color:var(--muted); }
+    .layer-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .layer-del { background:none; border:none; color:#444; cursor:pointer; padding:0 2px; font-size:12px; }
+    .layer-del:hover { color:#e55; }
+    #btn-add-layer { width:100%; margin-top:7px; background:var(--btn-bg); border:1px solid var(--border); color:var(--muted); padding:5px; border-radius:5px; cursor:pointer; font-size:10px; font-family:inherit; transition:background .15s; display:none; }
+    #btn-add-layer:hover { background:var(--btn-hover); color:var(--text); }
+    #emboss-sec { display:none; }
+    .row { display:flex; align-items:center; gap:6px; margin-bottom:7px; }
+    .row:last-child { margin-bottom:0; }
+    .row-label { font-size:10px; color:var(--muted); width:60px; flex-shrink:0; }
+    .row input[type=range] { flex:1; accent-color:#666; height:2px; cursor:pointer; }
+    .row-val { font-size:10px; color:var(--muted); width:34px; text-align:right; flex-shrink:0; }
+    .tog-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; }
+    .tog-row:last-child { margin-bottom:0; }
+    .tog-label { font-size:10px; color:var(--muted); }
+    .tog { position:relative; width:30px; height:16px; cursor:pointer; flex-shrink:0; }
+    .tog input { display:none; }
+    .tog-track { position:absolute; inset:0; background:#2a2a2a; border-radius:8px; transition:background .2s; }
+    .tog input:checked~.tog-track { background:#3a3a3a; }
+    .tog-thumb { position:absolute; top:2px; left:2px; width:12px; height:12px; background:#666; border-radius:50%; transition:left .2s,background .2s; }
+    .tog input:checked~.tog-thumb { left:16px; background:#bbb; }
+    .mat-grid { display:flex; gap:5px; flex-wrap:wrap; }
+    .mat-btn { flex:1; min-width:48px; padding:6px 3px; background:var(--btn-bg); border:1.5px solid transparent; border-radius:5px; color:var(--muted); font-family:inherit; font-size:10px; cursor:pointer; transition:all .12s; text-align:center; }
+    .mat-btn:hover { background:var(--btn-hover); color:var(--text); }
+    .mat-btn.active { border-color:#888; color:var(--text); }
+    .color-row { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+    .color-row:last-child { margin-bottom:0; }
+    .color-lbl { font-size:10px; color:var(--muted); flex:1; }
+    .swatch { width:26px; height:18px; border-radius:4px; border:1px solid #3a3a3a; cursor:pointer; overflow:hidden; flex-shrink:0; }
+    .swatch input[type=color] { width:200%; height:200%; border:none; cursor:pointer; transform:translate(-25%,-25%); }
+    .text-inp { width:100%; background:var(--btn-bg); border:1px solid var(--border); border-radius:5px; color:var(--text); padding:6px 8px; font-family:inherit; font-size:11px; outline:none; }
+    .text-inp:focus { border-color:#444; }
+    .btn { padding:7px 8px; border-radius:5px; border:1px solid var(--border); background:var(--btn-bg); color:var(--muted); font-family:inherit; font-size:10px; cursor:pointer; transition:background .12s; text-align:center; }
+    .btn:hover { background:var(--btn-hover); color:var(--text); }
+    .btn-row { display:flex; gap:5px; }
+    .btn-row .btn { flex:1; }
+    #canvas-wrap { flex:1; position:relative; overflow:hidden; }
+    #canvas-wrap canvas { display:block; width:100%!important; height:100%!important; }
+    #empty { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; gap:10px; color:var(--muted); }
+    #empty .e-icon { font-size:48px; opacity:.15; }
+    #empty .e-txt { font-size:13px; }
   </style>
 </head>
 <body>
@@ -81,165 +81,122 @@
 <div id="panel">
   <div class="panel-logo">Badge It</div>
 
-  <div class="section">
-    <span class="section-label">upload</span>
-    <div id="upload-zone">
+  <div class="sec">
+    <span class="sec-title">upload</span>
+    <div class="upload-zone" id="upload-zone">
       <input type="file" id="file-input" accept=".png,.svg" />
-      <div class="upload-icon">⬆</div>
-      <div class="upload-title">PNG or SVG</div>
-      <div class="upload-hint">
-        <em>PNG:</em> alpha = shape, brightness = emboss<br>
-        <em>SVG:</em> extruded as badge base
-      </div>
+      <div class="up-icon">&#8853;</div>
+      <div class="up-title">PNG or SVG</div>
+      <div class="up-hint"><em>PNG:</em> alpha=shape, grey=emboss<br><em>SVG:</em> extruded 3D badge</div>
+      <div class="up-fname" id="up-fname"></div>
     </div>
-    <div id="svg-layers" style="display:none"></div>
-    <button id="btn-add-layer" style="display:none">+ Add SVG Layer</button>
+    <div id="svg-layers"></div>
+    <button id="btn-add-layer">+ Add SVG Layer</button>
   </div>
 
-  <div class="section" id="emboss-section" style="display:none">
-    <span class="section-label">emboss</span>
-    <div class="slider-row">
-      <span class="slider-label">blur</span>
-      <input type="range" id="emboss-blur" min="0" max="10" step="0.1" value="2" />
-      <span class="slider-val" id="emboss-blur-val">2.0</span>
+  <div class="sec" id="emboss-sec">
+    <span class="sec-title">emboss</span>
+    <div class="row">
+      <span class="row-label">blur</span>
+      <input type="range" id="emb-blur" min="0" max="10" step="0.1" value="2" />
+      <span class="row-val" id="emb-blur-v">2.0</span>
     </div>
-    <div class="slider-row">
-      <span class="slider-label">contrast</span>
-      <input type="range" id="emboss-contrast" min="0.5" max="3" step="0.05" value="1.2" />
-      <span class="slider-val" id="emboss-contrast-val">1.20</span>
+    <div class="row">
+      <span class="row-label">contrast</span>
+      <input type="range" id="emb-contrast" min="0.5" max="3" step="0.05" value="1.2" />
+      <span class="row-val" id="emb-contrast-v">1.20</span>
     </div>
-    <div class="toggle-row" style="margin-top:4px">
-      <span class="toggle-label">invert</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="emboss-invert" />
-        <div class="toggle-track"></div>
-        <div class="toggle-thumb"></div>
-      </label>
+    <div class="tog-row" style="margin-top:5px">
+      <span class="tog-label">invert</span>
+      <label class="tog"><input type="checkbox" id="emb-invert"/><div class="tog-track"></div><div class="tog-thumb"></div></label>
     </div>
   </div>
 
-  <div class="section">
-    <span class="section-label">material</span>
-    <div class="mat-buttons">
+  <div class="sec">
+    <span class="sec-title">material</span>
+    <div class="mat-grid">
       <button class="mat-btn active" data-mat="chrome">Chrome</button>
       <button class="mat-btn" data-mat="gold">Gold</button>
       <button class="mat-btn" data-mat="bronze">Bronze</button>
+      <button class="mat-btn" data-mat="dark">Dark</button>
+      <button class="mat-btn" data-mat="blue">Blue</button>
+      <button class="mat-btn" data-mat="red">Red</button>
     </div>
-    <div class="toggle-row" style="margin-top:12px">
-      <span class="toggle-label">grain</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="grain-toggle" />
-        <div class="toggle-track"></div>
-        <div class="toggle-thumb"></div>
-      </label>
+    <div class="tog-row" style="margin-top:10px">
+      <span class="tog-label">grain</span>
+      <label class="tog"><input type="checkbox" id="grain-tog"/><div class="tog-track"></div><div class="tog-thumb"></div></label>
     </div>
   </div>
 
-  <div class="section">
-    <span class="section-label">environment</span>
-    <div class="slider-row">
-      <span class="slider-label">exposure</span>
-      <input type="range" id="env-exposure" min="0.5" max="3" step="0.05" value="1.2" />
-      <span class="slider-val" id="env-exposure-val">1.20</span>
+  <div class="sec">
+    <span class="sec-title">lighting</span>
+    <div class="row">
+      <span class="row-label">exposure</span>
+      <input type="range" id="exposure" min="0.5" max="3" step="0.05" value="1.2" />
+      <span class="row-val" id="exposure-v">1.20</span>
     </div>
     <div class="color-row">
-      <span class="color-label">bg color</span>
-      <div class="color-swatch"><input type="color" id="bg-color" value="#1a1a1a" /></div>
+      <span class="color-lbl">bg color</span>
+      <div class="swatch"><input type="color" id="bg-color" value="#1a1a1a"/></div>
     </div>
   </div>
 
-  <div class="section">
-    <span class="section-label">post</span>
-    <div class="toggle-row">
-      <span class="toggle-label">bloom</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="bloom-toggle" />
-        <div class="toggle-track"></div>
-        <div class="toggle-thumb"></div>
-      </label>
+  <div class="sec">
+    <span class="sec-title">post</span>
+    <div class="tog-row">
+      <span class="tog-label">bloom</span>
+      <label class="tog"><input type="checkbox" id="bloom-tog"/><div class="tog-track"></div><div class="tog-thumb"></div></label>
     </div>
-    <div id="bloom-controls" style="display:none">
-      <div class="slider-row">
-        <span class="slider-label">strength</span>
-        <input type="range" id="bloom-strength" min="0" max="3" step="0.05" value="0.6" />
-        <span class="slider-val" id="bloom-strength-val">0.60</span>
-      </div>
-      <div class="slider-row">
-        <span class="slider-label">radius</span>
-        <input type="range" id="bloom-radius" min="0" max="1" step="0.01" value="0.4" />
-        <span class="slider-val" id="bloom-radius-val">0.40</span>
-      </div>
-      <div class="slider-row">
-        <span class="slider-label">threshold</span>
-        <input type="range" id="bloom-threshold" min="0" max="1" step="0.01" value="0.5" />
-        <span class="slider-val" id="bloom-threshold-val">0.50</span>
-      </div>
+    <div id="bloom-ctrls" style="display:none">
+      <div class="row"><span class="row-label">strength</span><input type="range" id="bloom-str" min="0" max="3" step="0.05" value="0.6"/><span class="row-val" id="bloom-str-v">0.60</span></div>
+      <div class="row"><span class="row-label">radius</span><input type="range" id="bloom-rad" min="0" max="1" step="0.01" value="0.4"/><span class="row-val" id="bloom-rad-v">0.40</span></div>
+      <div class="row"><span class="row-label">threshold</span><input type="range" id="bloom-thr" min="0" max="1" step="0.01" value="0.5"/><span class="row-val" id="bloom-thr-v">0.50</span></div>
     </div>
-    <div class="toggle-row" style="margin-top:10px">
-      <span class="toggle-label">perspective + DOF</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="perspective-toggle" />
-        <div class="toggle-track"></div>
-        <div class="toggle-thumb"></div>
-      </label>
+    <div class="tog-row" style="margin-top:8px">
+      <span class="tog-label">perspective + DOF</span>
+      <label class="tog"><input type="checkbox" id="persp-tog"/><div class="tog-track"></div><div class="tog-thumb"></div></label>
     </div>
-    <div id="dof-controls" style="display:none">
-      <div class="slider-row">
-        <span class="slider-label">focus</span>
-        <input type="range" id="dof-focus" min="0" max="5" step="0.01" value="0.5" />
-        <span class="slider-val" id="dof-focus-val">0.50</span>
-      </div>
-      <div class="slider-row">
-        <span class="slider-label">aperture</span>
-        <input type="range" id="dof-aperture" min="0.00001" max="0.005" step="0.00001" value="0.0002" />
-        <span class="slider-val" id="dof-aperture-val">0.0002</span>
-      </div>
-      <div class="slider-row">
-        <span class="slider-label">max blur</span>
-        <input type="range" id="dof-maxblur" min="0.001" max="0.2" step="0.001" value="0.02" />
-        <span class="slider-val" id="dof-maxblur-val">0.020</span>
-      </div>
+    <div id="dof-ctrls" style="display:none">
+      <div class="row"><span class="row-label">focus</span><input type="range" id="dof-focus" min="0" max="5" step="0.01" value="0.5"/><span class="row-val" id="dof-focus-v">0.50</span></div>
+      <div class="row"><span class="row-label">aperture</span><input type="range" id="dof-ap" min="0.00001" max="0.005" step="0.00001" value="0.0002"/><span class="row-val" id="dof-ap-v">0.0002</span></div>
+      <div class="row"><span class="row-label">max blur</span><input type="range" id="dof-mb" min="0.001" max="0.2" step="0.001" value="0.02"/><span class="row-val" id="dof-mb-v">0.020</span></div>
     </div>
   </div>
 
-  <div class="section">
-    <span class="section-label">caption</span>
-    <input type="text" class="text-input" id="caption-text" placeholder="Badge caption..." />
-    <div class="color-row" style="margin-top:8px">
-      <span class="color-label">text color</span>
-      <div class="color-swatch"><input type="color" id="caption-color" value="#ffffff" /></div>
+  <div class="sec">
+    <span class="sec-title">caption</span>
+    <input type="text" class="text-inp" id="caption-txt" placeholder="Badge caption..." />
+    <div class="color-row" style="margin-top:7px">
+      <span class="color-lbl">text color</span>
+      <div class="swatch"><input type="color" id="caption-color" value="#ffffff"/></div>
     </div>
   </div>
 
-  <div class="section">
-    <span class="section-label">view</span>
-    <div class="toggle-row">
-      <span class="toggle-label">auto rotate</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="auto-rotate" />
-        <div class="toggle-track"></div>
-        <div class="toggle-thumb"></div>
-      </label>
+  <div class="sec">
+    <span class="sec-title">view</span>
+    <div class="tog-row">
+      <span class="tog-label">auto rotate</span>
+      <label class="tog"><input type="checkbox" id="autorot-tog"/><div class="tog-track"></div><div class="tog-thumb"></div></label>
     </div>
-    <div class="btn-row" style="margin-top:10px">
-      <button class="btn" id="btn-reset-view">⊙ reset view</button>
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn" id="btn-reset">⊙ reset view</button>
     </div>
   </div>
 
-  <div class="section">
-    <span class="section-label">export</span>
+  <div class="sec">
+    <span class="sec-title">export</span>
     <div class="btn-row">
-      <button class="btn" id="btn-export-1x">PNG 1×</button>
-      <button class="btn" id="btn-export-2x">2×</button>
-      <button class="btn" id="btn-export-4x">4×</button>
+      <button class="btn" id="btn-ex1">PNG 1×</button>
+      <button class="btn" id="btn-ex2">2×</button>
+      <button class="btn" id="btn-ex4">4×</button>
     </div>
   </div>
 </div>
 
-<div id="canvas-area">
-  <div id="empty-state">
-    <div class="es-icon">🏅</div>
-    <div class="es-text">Upload a PNG or SVG to begin</div>
+<div id="canvas-wrap">
+  <div id="empty">
+    <div class="e-icon">🏅</div>
+    <div class="e-txt">Upload PNG or SVG to begin</div>
   </div>
 </div>
 
@@ -254,21 +211,24 @@
   import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
   import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-  const MATCAP_URLS = {
+  const MATCAPS = {
     chrome: 'https://raw.githubusercontent.com/nidorx/matcaps/master/512/2E763A_78A0B7_B3D1CF_14F209.png',
     gold:   'https://raw.githubusercontent.com/nidorx/matcaps/master/512/E6BF3C_5A4719_977726_FCFC82.png',
     bronze: 'https://raw.githubusercontent.com/nidorx/matcaps/master/512/7B5254_E9DCC7_B19986_C8AC91.png',
+    dark:   'https://raw.githubusercontent.com/nidorx/matcaps/master/512/2D2D2D_898989_636363_777777.png',
+    blue:   'https://raw.githubusercontent.com/nidorx/matcaps/master/512/1A2461_3D70DB_2B44AA_2969D6.png',
+    red:    'https://raw.githubusercontent.com/nidorx/matcaps/master/512/7C3945_C8786E_A3342A_BE4B42.png',
   };
 
-  // ── Renderer ─────────────────────────────────────────────
-  const canvasArea = document.getElementById('canvas-area');
+  // Renderer
+  const wrap = document.getElementById('canvas-wrap');
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(canvasArea.clientWidth, canvasArea.clientHeight);
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.2;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  canvasArea.appendChild(renderer.domElement);
+  wrap.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a1a1a);
@@ -277,79 +237,74 @@
   pmrem.compileEquirectangularShader();
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-  // ── Cameras ──────────────────────────────────────────────
-  const W0 = canvasArea.clientWidth, H0 = canvasArea.clientHeight;
-  const orthoSize = 2.5;
-  const camera = new THREE.OrthographicCamera(
-    -orthoSize * W0/H0, orthoSize * W0/H0, orthoSize, -orthoSize, 0.01, 100
-  );
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+  const spot = new THREE.SpotLight(0xffffff, 2.5);
+  spot.position.set(3, 4, 2); spot.penumbra = 0.3; spot.castShadow = true;
+  scene.add(spot);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.4);
+  fill.position.set(-2, 1, -1); scene.add(fill);
+  const rim = new THREE.DirectionalLight(0xaaccff, 0.5);
+  rim.position.set(0, -1, -3); scene.add(rim);
+
+  // Cameras
+  const OS = 2.5;
+  const asp0 = wrap.clientWidth / wrap.clientHeight;
+  const camera = new THREE.OrthographicCamera(-OS*asp0, OS*asp0, OS, -OS, 0.01, 100);
   camera.position.set(0, 0, 5);
-
-  const perspCam = new THREE.PerspectiveCamera(45, W0/H0, 0.01, 100);
+  const perspCam = new THREE.PerspectiveCamera(45, asp0, 0.01, 100);
   perspCam.position.set(0, 0, 5);
-
-  let usePerspective = false;
-  let activeCamera = camera;
+  let usePerspective = false, activeCam = camera;
 
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
+  controls.enableDamping = true; controls.dampingFactor = 0.08;
 
-  // ── Composer ─────────────────────────────────────────────
-  let composer = null, bloomPass = null, bokehPass = null;
-  let useBloom = false;
+  // Composer
+  let composer = null, bloomPass = null, bokehPass = null, useBloom = false;
 
   function rebuildComposer() {
     if (composer) { composer.dispose(); composer = null; bloomPass = null; bokehPass = null; }
     if (!useBloom && !usePerspective) return;
-    const W = canvasArea.clientWidth, H = canvasArea.clientHeight;
+    const W = wrap.clientWidth, H = wrap.clientHeight;
     const cam = usePerspective ? perspCam : camera;
     composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, cam));
     if (useBloom) {
-      bloomPass = new UnrealBloomPass(
-        new THREE.Vector2(W, H),
-        parseFloat(document.getElementById('bloom-strength').value),
-        parseFloat(document.getElementById('bloom-radius').value),
-        parseFloat(document.getElementById('bloom-threshold').value)
-      );
+      bloomPass = new UnrealBloomPass(new THREE.Vector2(W, H),
+        parseFloat(document.getElementById('bloom-str').value),
+        parseFloat(document.getElementById('bloom-rad').value),
+        parseFloat(document.getElementById('bloom-thr').value));
       composer.addPass(bloomPass);
     }
     if (usePerspective) {
       bokehPass = new BokehPass(scene, perspCam, {
         focus: parseFloat(document.getElementById('dof-focus').value),
-        aperture: parseFloat(document.getElementById('dof-aperture').value),
-        maxblur: parseFloat(document.getElementById('dof-maxblur').value),
+        aperture: parseFloat(document.getElementById('dof-ap').value),
+        maxblur: parseFloat(document.getElementById('dof-mb').value),
       });
       composer.addPass(bokehPass);
     }
     composer.addPass(new OutputPass());
   }
 
-  // ── State ────────────────────────────────────────────────
-  let badgeGroup = null;
-  let captionMesh = null;
-  let uploadedImgData = null, uploadedImgW = 0, uploadedImgH = 0;
-  let currentMat = 'chrome';
-  let grainEnabled = false;
-  let matcapTex = null, embossNormalTex = null, grainTex = null;
+  // State
+  let badgeGroup = null, captionMesh = null;
+  let uploadedImgData = null, uploadedW = 0, uploadedH = 0;
+  let currentMat = 'chrome', grainEnabled = false;
+  let matcapTex = null, embossNormTex = null, grainTex = null;
   let autoRotate = false;
-  const svgLayers = []; // { name, shapes, mesh }
+  const svgLayers = [];
   let isPNG = false;
 
-  // ── Grain texture ─────────────────────────────────────────
+  // Grain texture
   function makeGrainTex() {
-    const s = 256;
-    const c = document.createElement('canvas');
+    const s = 256, c = document.createElement('canvas');
     c.width = c.height = s;
-    const ctx = c.getContext('2d');
-    const img = ctx.createImageData(s, s);
+    const ctx = c.getContext('2d'), img = ctx.createImageData(s, s);
     for (let i = 0; i < img.data.length; i += 4) {
       const n = Math.random();
-      img.data[i]   = Math.round((n * 0.25 + 0.37) * 255);
-      img.data[i+1] = Math.round((n * 0.25 + 0.37) * 255);
-      img.data[i+2] = 255;
-      img.data[i+3] = 255;
+      img.data[i] = img.data[i+1] = Math.round((n*0.25+0.37)*255);
+      img.data[i+2] = 255; img.data[i+3] = 255;
     }
     ctx.putImageData(img, 0, 0);
     const t = new THREE.CanvasTexture(c);
@@ -358,11 +313,11 @@
     return t;
   }
 
-  // ── Normal map from grayscale (Sobel) ─────────────────────
-  function makeNormalMap(imgData, W, H, blur, contrast, invert) {
+  // Normal map from grayscale
+  function makeNormalMap(data, W, H, blur, contrast, invert) {
     const gray = new Float32Array(W * H);
     for (let i = 0; i < W * H; i++) {
-      let g = (imgData[i*4] + imgData[i*4+1] + imgData[i*4+2]) / 765;
+      let g = (data[i*4] + data[i*4+1] + data[i*4+2]) / 765;
       g = (g - 0.5) * contrast + 0.5;
       g = Math.max(0, Math.min(1, g));
       if (invert) g = 1 - g;
@@ -371,59 +326,45 @@
     const bk = new Float32Array(W * H);
     const r = Math.round(blur);
     if (r > 0) {
-      for (let y = 0; y < H; y++) {
-        for (let x = 0; x < W; x++) {
-          let sum = 0, cnt = 0;
-          for (let dy = -r; dy <= r; dy++) {
-            for (let dx = -r; dx <= r; dx++) {
-              sum += gray[Math.min(H-1,Math.max(0,y+dy))*W + Math.min(W-1,Math.max(0,x+dx))];
-              cnt++;
-            }
-          }
-          bk[y*W+x] = sum / cnt;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        let sum = 0, cnt = 0;
+        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+          sum += gray[Math.min(H-1,Math.max(0,y+dy))*W + Math.min(W-1,Math.max(0,x+dx))];
+          cnt++;
         }
+        bk[y*W+x] = sum / cnt;
       }
-    } else {
-      bk.set(gray);
-    }
+    } else { bk.set(gray); }
     const c = document.createElement('canvas');
     c.width = W; c.height = H;
-    const ctx = c.getContext('2d');
-    const out = ctx.createImageData(W, H);
+    const ctx = c.getContext('2d'), out = ctx.createImageData(W, H);
     const g2 = (x, y) => bk[Math.min(H-1,Math.max(0,y))*W + Math.min(W-1,Math.max(0,x))];
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        const gx = (g2(x+1,y-1)+2*g2(x+1,y)+g2(x+1,y+1)) - (g2(x-1,y-1)+2*g2(x-1,y)+g2(x-1,y+1));
-        const gy = (g2(x-1,y+1)+2*g2(x,y+1)+g2(x+1,y+1)) - (g2(x-1,y-1)+2*g2(x,y-1)+g2(x+1,y-1));
-        const idx = (y*W+x)*4;
-        out.data[idx]   = Math.round((gx*0.5+0.5)*255);
-        out.data[idx+1] = Math.round((gy*0.5+0.5)*255);
-        out.data[idx+2] = 255;
-        out.data[idx+3] = 255;
-      }
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const gx = (g2(x+1,y-1)+2*g2(x+1,y)+g2(x+1,y+1)) - (g2(x-1,y-1)+2*g2(x-1,y)+g2(x-1,y+1));
+      const gy = (g2(x-1,y+1)+2*g2(x,y+1)+g2(x+1,y+1)) - (g2(x-1,y-1)+2*g2(x,y-1)+g2(x+1,y-1));
+      const idx = (y*W+x)*4;
+      out.data[idx]   = Math.round((gx*0.5+0.5)*255);
+      out.data[idx+1] = Math.round((gy*0.5+0.5)*255);
+      out.data[idx+2] = 255; out.data[idx+3] = 255;
     }
     ctx.putImageData(out, 0, 0);
     return new THREE.CanvasTexture(c);
   }
 
-  // ── Apply material ────────────────────────────────────────
+  // Apply material
   function applyMaterial() {
     if (!badgeGroup || !matcapTex) return;
     if (grainEnabled && !grainTex) grainTex = makeGrainTex();
-    const normalTex = embossNormalTex;
     badgeGroup.traverse(obj => {
       if (!obj.isMesh || obj.userData.isCaption) return;
       const old = obj.material;
       const nm = new THREE.MeshMatcapMaterial({ matcap: matcapTex, side: THREE.DoubleSide });
-      if (normalTex && grainEnabled) {
-        nm.normalMap = normalTex;
-        nm.normalScale = new THREE.Vector2(2.2, 2.2);
-      } else if (normalTex) {
-        nm.normalMap = normalTex;
-        nm.normalScale = new THREE.Vector2(1.6, 1.6);
+      if (embossNormTex && grainEnabled) {
+        nm.normalMap = embossNormTex; nm.normalScale = new THREE.Vector2(2.2, 2.2);
+      } else if (embossNormTex) {
+        nm.normalMap = embossNormTex; nm.normalScale = new THREE.Vector2(1.6, 1.6);
       } else if (grainEnabled && grainTex) {
-        nm.normalMap = grainTex;
-        nm.normalScale = new THREE.Vector2(0.5, 0.5);
+        nm.normalMap = grainTex; nm.normalScale = new THREE.Vector2(0.5, 0.5);
       }
       obj.material = nm;
       if (old) old.dispose();
@@ -431,18 +372,25 @@
   }
 
   function loadMatcap(key) {
-    new THREE.TextureLoader().load(MATCAP_URLS[key], tex => {
+    new THREE.TextureLoader().load(MATCAPS[key], tex => {
       tex.colorSpace = THREE.SRGBColorSpace;
       if (matcapTex) matcapTex.dispose();
       matcapTex = tex;
       applyMaterial();
     });
   }
+  loadMatcap('chrome');
 
-  // ── Caption ──────────────────────────────────────────────
+  // Caption
   function updateCaption() {
-    if (captionMesh) { scene.remove(captionMesh); captionMesh.material.map.dispose(); captionMesh.geometry.dispose(); captionMesh = null; }
-    const text = document.getElementById('caption-text').value.trim();
+    if (captionMesh) {
+      scene.remove(captionMesh);
+      if (captionMesh.material.map) captionMesh.material.map.dispose();
+      captionMesh.geometry.dispose();
+      captionMesh.material.dispose();
+      captionMesh = null;
+    }
+    const text = document.getElementById('caption-txt').value.trim();
     if (!text) return;
     const color = document.getElementById('caption-color').value;
     const c = document.createElement('canvas');
@@ -457,37 +405,48 @@
     const mat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false });
     captionMesh = new THREE.Mesh(geo, mat);
     captionMesh.userData.isCaption = true;
-    captionMesh.position.set(0, -1.6, 0.01);
+    captionMesh.position.set(0, -1.7, 0.01);
     scene.add(captionMesh);
   }
 
-  // ── Clear badge ───────────────────────────────────────────
+  // Clear badge
   function clearBadge() {
     if (badgeGroup) {
       scene.remove(badgeGroup);
-      badgeGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      badgeGroup.traverse(o => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) o.material.dispose();
+      });
       badgeGroup = null;
     }
-    if (embossNormalTex) { embossNormalTex.dispose(); embossNormalTex = null; }
+    if (embossNormTex) { embossNormTex.dispose(); embossNormTex = null; }
+    svgLayers.length = 0;
   }
 
-  // ── Build badge from PNG ──────────────────────────────────
+  // Build PNG badge
   function buildBadgeFromPNG() {
     if (!uploadedImgData) return;
-    clearBadge();
+    const W = uploadedW, H = uploadedH;
+    // Clear old badge but preserve svgLayers logic (PNG clears all)
+    if (badgeGroup) {
+      scene.remove(badgeGroup);
+      badgeGroup.traverse(o => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) o.material.dispose();
+      });
+      badgeGroup = null;
+    }
+    if (embossNormTex) { embossNormTex.dispose(); embossNormTex = null; }
 
-    const W = uploadedImgW, H = uploadedImgH;
-    const blur = parseFloat(document.getElementById('emboss-blur').value);
-    const contrast = parseFloat(document.getElementById('emboss-contrast').value);
-    const invert = document.getElementById('emboss-invert').checked;
+    const blur = parseFloat(document.getElementById('emb-blur').value);
+    const contrast = parseFloat(document.getElementById('emb-contrast').value);
+    const invert = document.getElementById('emb-invert').checked;
+    embossNormTex = makeNormalMap(uploadedImgData, W, H, blur, contrast, invert);
 
-    embossNormalTex = makeNormalMap(uploadedImgData, W, H, blur, contrast, invert);
-
-    // Alpha → alphaMap
+    // Alpha texture from PNG alpha channel
     const ac = document.createElement('canvas');
     ac.width = W; ac.height = H;
-    const actx = ac.getContext('2d');
-    const ai = actx.createImageData(W, H);
+    const actx = ac.getContext('2d'), ai = actx.createImageData(W, H);
     for (let i = 0; i < W * H; i++) {
       const a = uploadedImgData[i*4+3];
       ai.data[i*4] = ai.data[i*4+1] = ai.data[i*4+2] = a;
@@ -496,54 +455,106 @@
     actx.putImageData(ai, 0, 0);
     const alphaTex = new THREE.CanvasTexture(ac);
 
+    // Color texture from PNG RGB
+    const cc = document.createElement('canvas');
+    cc.width = W; cc.height = H;
+    const cctx = cc.getContext('2d'), ci = cctx.createImageData(W, H);
+    for (let i = 0; i < W * H; i++) {
+      ci.data[i*4]   = uploadedImgData[i*4];
+      ci.data[i*4+1] = uploadedImgData[i*4+1];
+      ci.data[i*4+2] = uploadedImgData[i*4+2];
+      ci.data[i*4+3] = uploadedImgData[i*4+3];
+    }
+    cctx.putImageData(ci, 0, 0);
+    const colorTex = new THREE.CanvasTexture(cc);
+    colorTex.colorSpace = THREE.SRGBColorSpace;
+
     const imgAspect = W / H;
-    const pw = imgAspect >= 1 ? 2 : 2 * imgAspect;
-    const ph = imgAspect >= 1 ? 2 / imgAspect : 2;
-    const geo = new THREE.PlaneGeometry(pw, ph, 1, 1);
-
-    // Front face: emboss normalMap + alphaMap
-    const frontMat = new THREE.MeshMatcapMaterial({ matcap: matcapTex || undefined, alphaMap: alphaTex, transparent: true, side: THREE.FrontSide });
-    if (embossNormalTex) { frontMat.normalMap = embossNormalTex; frontMat.normalScale = new THREE.Vector2(1.5, 1.5); }
-
-    // Back face plain
-    const backMat = new THREE.MeshMatcapMaterial({ matcap: matcapTex || undefined, alphaMap: alphaTex, transparent: true, side: THREE.BackSide });
+    const pw = imgAspect >= 1 ? 2.4 : 2.4 * imgAspect;
+    const ph = imgAspect >= 1 ? 2.4 / imgAspect : 2.4;
 
     badgeGroup = new THREE.Group();
-    const frontMesh = new THREE.Mesh(geo, frontMat);
-    frontMesh.position.z = 0.04;
-    badgeGroup.add(frontMesh);
 
-    // Thin extrusion for edge
-    const edgeGeo = new THREE.BoxGeometry(pw, ph, 0.08);
-    const edgeMat = new THREE.MeshMatcapMaterial({ matcap: matcapTex || undefined, alphaMap: alphaTex, transparent: true });
-    const edgeMesh = new THREE.Mesh(edgeGeo, edgeMat);
-    badgeGroup.add(edgeMesh);
+    // Front face with emboss
+    const fGeo = new THREE.PlaneGeometry(pw, ph, 128, 128);
+    const fMat = new THREE.MeshMatcapMaterial({
+      matcap: matcapTex || undefined,
+      map: colorTex,
+      alphaMap: alphaTex,
+      transparent: true,
+      side: THREE.FrontSide,
+    });
+    if (embossNormTex) {
+      fMat.normalMap = embossNormTex;
+      fMat.normalScale = new THREE.Vector2(1.8, 1.8);
+    }
+    const fMesh = new THREE.Mesh(fGeo, fMat);
+    fMesh.position.z = 0.06;
+    badgeGroup.add(fMesh);
+
+    // Back face
+    const bMat = new THREE.MeshMatcapMaterial({
+      matcap: matcapTex || undefined,
+      alphaMap: alphaTex,
+      transparent: true,
+      side: THREE.BackSide,
+    });
+    const bMesh = new THREE.Mesh(fGeo.clone(), bMat);
+    bMesh.position.z = -0.06;
+    badgeGroup.add(bMesh);
+
+    // Edge slab
+    const eGeo = new THREE.BoxGeometry(pw, ph, 0.12);
+    const eMat = new THREE.MeshMatcapMaterial({
+      matcap: matcapTex || undefined,
+      alphaMap: alphaTex,
+      transparent: true,
+    });
+    badgeGroup.add(new THREE.Mesh(eGeo, eMat));
 
     scene.add(badgeGroup);
-    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('empty').style.display = 'none';
     applyMaterial();
     updateCaption();
   }
 
-  // ── Build badge from SVG ──────────────────────────────────
-  function buildBadgeFromSVG(svgText, name, isBase) {
+  // SVG layer list render
+  function renderSVGLayerList() {
+    const el = document.getElementById('svg-layers');
+    el.style.display = svgLayers.length ? '' : 'none';
+    document.getElementById('btn-add-layer').style.display = svgLayers.length ? '' : 'none';
+    el.innerHTML = svgLayers.map((l, i) =>
+      `<div class="layer-row"><span class="layer-name">${l.name}</span><button class="layer-del" data-i="${i}">✕</button></div>`
+    ).join('');
+    el.querySelectorAll('.layer-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.i);
+        if (badgeGroup && svgLayers[idx].mesh) badgeGroup.remove(svgLayers[idx].mesh);
+        svgLayers.splice(idx, 1);
+        renderSVGLayerList();
+      });
+    });
+  }
+
+  // Build SVG badge
+  function buildSVGLayer(svgText, name, isBase) {
     const loader = new SVGLoader();
     const data = loader.parse(svgText);
     const paths = data.paths;
     const shapes = [];
-    paths.forEach(path => {
-      SVGLoader.createShapes(path).forEach(s => shapes.push(s));
-    });
+    paths.forEach(p => SVGLoader.createShapes(p).forEach(s => shapes.push(s)));
     if (!shapes.length) return;
 
-    // Compute bounding box to center
+    // Center and scale
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    shapes.forEach(shape => {
-      const pts = shape.getPoints(12);
-      pts.forEach(p => { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); });
+    shapes.forEach(sh => {
+      sh.getPoints(16).forEach(p => {
+        minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+      });
     });
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-    const scale = 2 / Math.max(maxX - minX, maxY - minY);
+    const scale = 2.4 / Math.max(maxX - minX, maxY - minY);
 
     if (isBase) {
       clearBadge();
@@ -552,100 +563,82 @@
     }
 
     const layerGroup = new THREE.Group();
-    const extrudeSettings = { depth: isBase ? 0.12 : 0.06, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 3 };
-    shapes.forEach(shape => {
-      const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    const depth = isBase ? 0.14 : 0.07;
+    const extOpts = { depth, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.012, bevelSegments: 4 };
+    shapes.forEach(sh => {
+      const geo = new THREE.ExtrudeGeometry(sh, extOpts);
       geo.translate(-cx, -cy, 0);
       geo.scale(scale, -scale, scale);
-      const mat = new THREE.MeshMatcapMaterial({ matcap: matcapTex || undefined, side: THREE.FrontSide });
+      const mat = new THREE.MeshMatcapMaterial({ matcap: matcapTex || undefined, side: THREE.DoubleSide });
       layerGroup.add(new THREE.Mesh(geo, mat));
     });
 
-    if (isBase) {
-      badgeGroup.add(layerGroup);
-    } else {
-      layerGroup.position.z = (svgLayers.length + 1) * 0.08;
-      badgeGroup.add(layerGroup);
+    if (!isBase) {
+      layerGroup.position.z = svgLayers.length * 0.09 + 0.07;
     }
+    badgeGroup.add(layerGroup);
     svgLayers.push({ name, mesh: layerGroup });
 
-    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('empty').style.display = 'none';
     applyMaterial();
     updateCaption();
     renderSVGLayerList();
   }
 
-  function renderSVGLayerList() {
-    const el = document.getElementById('svg-layers');
-    el.style.display = svgLayers.length ? '' : 'none';
-    el.innerHTML = svgLayers.map((l, i) =>
-      `<div class="layer-item"><span>${l.name}</span><button data-idx="${i}">✕</button></div>`
-    ).join('');
-    el.querySelectorAll('button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = parseInt(btn.dataset.idx);
-        if (badgeGroup) badgeGroup.remove(svgLayers[idx].mesh);
-        svgLayers.splice(idx, 1);
-        renderSVGLayerList();
-      });
-    });
-    document.getElementById('btn-add-layer').style.display = svgLayers.length ? '' : 'none';
-  }
-
-  // ── File upload ───────────────────────────────────────────
-  function handleFile(file) {
+  // File handler
+  function handleFile(file, isAddLayer) {
     if (!file) return;
     const ext = file.name.split('.').pop().toLowerCase();
+    document.getElementById('up-fname').textContent = file.name;
+
     if (ext === 'png') {
       isPNG = true;
-      svgLayers.length = 0;
-      document.getElementById('svg-layers').style.display = 'none';
+      document.getElementById('emboss-sec').style.display = '';
       document.getElementById('btn-add-layer').style.display = 'none';
-      document.getElementById('emboss-section').style.display = '';
-
       const img = new Image();
       img.onload = () => {
         const c = document.createElement('canvas');
         c.width = img.naturalWidth; c.height = img.naturalHeight;
-        const ctx = c.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        const id = ctx.getImageData(0, 0, c.width, c.height);
+        c.getContext('2d').drawImage(img, 0, 0);
+        const id = c.getContext('2d').getImageData(0, 0, c.width, c.height);
         uploadedImgData = id.data;
-        uploadedImgW = c.width;
-        uploadedImgH = c.height;
+        uploadedW = c.width; uploadedH = c.height;
         buildBadgeFromPNG();
       };
       img.src = URL.createObjectURL(file);
     } else if (ext === 'svg') {
       isPNG = false;
-      document.getElementById('emboss-section').style.display = 'none';
+      document.getElementById('emboss-sec').style.display = 'none';
       const reader = new FileReader();
       reader.onload = e => {
-        const isBase = svgLayers.length === 0;
-        if (isBase) svgLayers.length = 0;
-        buildBadgeFromSVG(e.target.result, file.name, isBase);
+        const isBase = !isAddLayer;
+        buildSVGLayer(e.target.result, file.name, isBase);
       };
       reader.readAsText(file);
     }
   }
 
+  // Upload events
   const uploadZone = document.getElementById('upload-zone');
   const fileInput = document.getElementById('file-input');
-  uploadZone.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+  uploadZone.addEventListener('click', e => { if (e.target !== fileInput) fileInput.click(); });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0], false); });
   uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
   uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-  uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault(); uploadZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0], false);
+  });
 
+  // Add SVG layer button
   const addLayerInput = document.createElement('input');
   addLayerInput.type = 'file'; addLayerInput.accept = '.svg';
   addLayerInput.addEventListener('change', () => {
-    const f = addLayerInput.files[0];
-    if (f) { const r = new FileReader(); r.onload = e => buildBadgeFromSVG(e.target.result, f.name, false); r.readAsText(f); }
+    if (addLayerInput.files[0]) handleFile(addLayerInput.files[0], true);
   });
   document.getElementById('btn-add-layer').addEventListener('click', () => addLayerInput.click());
 
-  // ── Material buttons ──────────────────────────────────────
+  // Material buttons
   document.querySelectorAll('.mat-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.mat-btn').forEach(b => b.classList.remove('active'));
@@ -654,127 +647,120 @@
       loadMatcap(currentMat);
     });
   });
-  loadMatcap('chrome');
 
-  // ── Grain ─────────────────────────────────────────────────
-  document.getElementById('grain-toggle').addEventListener('change', e => {
+  // Grain
+  document.getElementById('grain-tog').addEventListener('change', e => {
     grainEnabled = e.target.checked;
+    if (grainEnabled && !grainTex) grainTex = makeGrainTex();
     applyMaterial();
   });
 
-  // ── Emboss sliders ────────────────────────────────────────
+  // Slider helper
   function bindSlider(id, valId, digits, onChange) {
-    const sl = document.getElementById(id);
-    const vl = document.getElementById(valId);
-    const update = () => { vl.textContent = parseFloat(sl.value).toFixed(digits); onChange(parseFloat(sl.value)); };
-    sl.addEventListener('input', update);
+    const sl = document.getElementById(id), vl = document.getElementById(valId);
+    const upd = () => { vl.textContent = parseFloat(sl.value).toFixed(digits); onChange(parseFloat(sl.value)); };
+    sl.addEventListener('input', upd);
   }
-  bindSlider('emboss-blur', 'emboss-blur-val', 1, () => { if (isPNG) buildBadgeFromPNG(); });
-  bindSlider('emboss-contrast', 'emboss-contrast-val', 2, () => { if (isPNG) buildBadgeFromPNG(); });
-  document.getElementById('emboss-invert').addEventListener('change', () => { if (isPNG) buildBadgeFromPNG(); });
 
-  // ── Environment ───────────────────────────────────────────
-  bindSlider('env-exposure', 'env-exposure-val', 2, v => { renderer.toneMappingExposure = v; });
+  // Emboss sliders
+  bindSlider('emb-blur', 'emb-blur-v', 1, () => { if (isPNG) buildBadgeFromPNG(); });
+  bindSlider('emb-contrast', 'emb-contrast-v', 2, () => { if (isPNG) buildBadgeFromPNG(); });
+  document.getElementById('emb-invert').addEventListener('change', () => { if (isPNG) buildBadgeFromPNG(); });
+
+  // Lighting
+  bindSlider('exposure', 'exposure-v', 2, v => { renderer.toneMappingExposure = v; });
   document.getElementById('bg-color').addEventListener('input', e => { scene.background = new THREE.Color(e.target.value); });
 
-  // ── Bloom ─────────────────────────────────────────────────
-  document.getElementById('bloom-toggle').addEventListener('change', e => {
+  // Bloom
+  document.getElementById('bloom-tog').addEventListener('change', e => {
     useBloom = e.target.checked;
-    document.getElementById('bloom-controls').style.display = useBloom ? '' : 'none';
+    document.getElementById('bloom-ctrls').style.display = useBloom ? '' : 'none';
     rebuildComposer();
   });
-  bindSlider('bloom-strength', 'bloom-strength-val', 2, v => { if (bloomPass) bloomPass.strength = v; });
-  bindSlider('bloom-radius', 'bloom-radius-val', 2, v => { if (bloomPass) bloomPass.radius = v; });
-  bindSlider('bloom-threshold', 'bloom-threshold-val', 2, v => { if (bloomPass) bloomPass.threshold = v; });
+  bindSlider('bloom-str', 'bloom-str-v', 2, v => { if (bloomPass) bloomPass.strength = v; });
+  bindSlider('bloom-rad', 'bloom-rad-v', 2, v => { if (bloomPass) bloomPass.radius = v; });
+  bindSlider('bloom-thr', 'bloom-thr-v', 2, v => { if (bloomPass) bloomPass.threshold = v; });
 
-  // ── Perspective / DOF ─────────────────────────────────────
-  document.getElementById('perspective-toggle').addEventListener('change', e => {
+  // DOF / Perspective
+  document.getElementById('persp-tog').addEventListener('change', e => {
     usePerspective = e.target.checked;
-    document.getElementById('dof-controls').style.display = usePerspective ? '' : 'none';
+    document.getElementById('dof-ctrls').style.display = usePerspective ? '' : 'none';
     if (usePerspective) {
       perspCam.position.copy(camera.position);
       perspCam.quaternion.copy(camera.quaternion);
-      perspCam.aspect = canvasArea.clientWidth / canvasArea.clientHeight;
+      perspCam.aspect = wrap.clientWidth / wrap.clientHeight;
       perspCam.updateProjectionMatrix();
-      controls.object = perspCam;
-      activeCamera = perspCam;
+      controls.object = perspCam; activeCam = perspCam;
     } else {
-      controls.object = camera;
-      activeCamera = camera;
+      controls.object = camera; activeCam = camera;
     }
     rebuildComposer();
   });
-  bindSlider('dof-focus', 'dof-focus-val', 2, v => { if (bokehPass) bokehPass.uniforms.focus.value = v; });
-  bindSlider('dof-aperture', 'dof-aperture-val', 5, v => { if (bokehPass) bokehPass.uniforms.aperture.value = v; });
-  bindSlider('dof-maxblur', 'dof-maxblur-val', 3, v => { if (bokehPass) bokehPass.uniforms.maxblur.value = v; });
+  bindSlider('dof-focus', 'dof-focus-v', 2, v => { if (bokehPass) bokehPass.uniforms.focus.value = v; });
+  bindSlider('dof-ap', 'dof-ap-v', 5, v => { if (bokehPass) bokehPass.uniforms.aperture.value = v; });
+  bindSlider('dof-mb', 'dof-mb-v', 3, v => { if (bokehPass) bokehPass.uniforms.maxblur.value = v; });
 
-  // ── Caption ───────────────────────────────────────────────
-  document.getElementById('caption-text').addEventListener('input', updateCaption);
+  // Caption
+  document.getElementById('caption-txt').addEventListener('input', updateCaption);
   document.getElementById('caption-color').addEventListener('input', updateCaption);
 
-  // ── Auto rotate ───────────────────────────────────────────
-  document.getElementById('auto-rotate').addEventListener('change', e => {
+  // Auto rotate
+  document.getElementById('autorot-tog').addEventListener('change', e => {
     autoRotate = e.target.checked;
     controls.enabled = !autoRotate;
   });
 
-  // ── Reset view ────────────────────────────────────────────
-  document.getElementById('btn-reset-view').addEventListener('click', () => {
+  // Reset view
+  document.getElementById('btn-reset').addEventListener('click', () => {
     camera.position.set(0, 0, 5);
     perspCam.position.set(0, 0, 5);
     controls.target.set(0, 0, 0);
     controls.update();
   });
 
-  // ── Resize ────────────────────────────────────────────────
+  // Resize
   window.addEventListener('resize', () => {
-    const W = canvasArea.clientWidth, H = canvasArea.clientHeight;
+    const W = wrap.clientWidth, H = wrap.clientHeight;
     renderer.setSize(W, H);
     const a = W / H;
-    camera.left = -orthoSize * a; camera.right = orthoSize * a;
+    camera.left = -OS * a; camera.right = OS * a;
     camera.updateProjectionMatrix();
-    perspCam.aspect = a;
-    perspCam.updateProjectionMatrix();
+    perspCam.aspect = a; perspCam.updateProjectionMatrix();
     if (composer) composer.setSize(W, H);
   });
 
-  // ── Export ────────────────────────────────────────────────
+  // Export
   function doExport(scale) {
-    const W = canvasArea.clientWidth, H = canvasArea.clientHeight;
-    const offRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    offRenderer.setPixelRatio(1);
-    offRenderer.setSize(W * scale, H * scale);
-    offRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-    offRenderer.toneMappingExposure = renderer.toneMappingExposure;
-    offRenderer.outputColorSpace = THREE.SRGBColorSpace;
-    const offPmrem = new THREE.PMREMGenerator(offRenderer);
+    const W = wrap.clientWidth, H = wrap.clientHeight;
+    const off = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    off.setPixelRatio(1); off.setSize(W * scale, H * scale);
+    off.toneMapping = THREE.ACESFilmicToneMapping;
+    off.toneMappingExposure = renderer.toneMappingExposure;
+    off.outputColorSpace = THREE.SRGBColorSpace;
+    const offPmrem = new THREE.PMREMGenerator(off);
     offPmrem.compileEquirectangularShader();
     scene.environment = offPmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    offRenderer.render(scene, activeCamera);
-    const url = offRenderer.domElement.toDataURL('image/png');
+    off.render(scene, activeCam);
+    const url = off.domElement.toDataURL('image/png');
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    offRenderer.dispose();
+    off.dispose();
     const a = document.createElement('a');
-    a.href = url; a.download = `badge-${scale}x.png`; a.click();
+    a.href = url; a.download = 'badge-' + scale + 'x.png'; a.click();
   }
-  document.getElementById('btn-export-1x').addEventListener('click', () => doExport(1));
-  document.getElementById('btn-export-2x').addEventListener('click', () => doExport(2));
-  document.getElementById('btn-export-4x').addEventListener('click', () => doExport(4));
+  document.getElementById('btn-ex1').addEventListener('click', () => doExport(1));
+  document.getElementById('btn-ex2').addEventListener('click', () => doExport(2));
+  document.getElementById('btn-ex4').addEventListener('click', () => doExport(4));
 
-  // ── Animate ───────────────────────────────────────────────
+  // Animate
   function animate() {
     requestAnimationFrame(animate);
     controls.update();
     if (autoRotate && badgeGroup) badgeGroup.rotation.y += 0.005;
     if (captionMesh && badgeGroup) captionMesh.rotation.y = badgeGroup.rotation.y;
-    if (composer) {
-      composer.render();
-    } else {
-      renderer.render(scene, activeCamera);
-    }
+    if (composer) composer.render();
+    else renderer.render(scene, activeCam);
   }
   animate();
-
 </script>
 </body>
 </html>
