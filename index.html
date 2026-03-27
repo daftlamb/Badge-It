@@ -73,13 +73,14 @@ select{background:#2a2a2a;color:#ccc;border:1px solid var(--border);padding:2px 
 #mobile-toggle{display:none;}
 #drawer-backdrop{display:none;}
 @media(max-width:600px){
-  body{flex-direction:column;}
+  body{flex-direction:column;position:relative;}
 
   /* Canvas takes full screen */
   #canvas-wrap{
-    position:fixed;inset:0;
+    position:fixed;top:0;left:0;
     width:100vw;height:100vh;
     z-index:1;
+    flex:none;
   }
 
   /* Mobile toggle button — bottom center */
@@ -485,8 +486,8 @@ function makeNormalTexture(type) {
 
 // ─── SCENE SETUP ──────────────────────────────────────────────────────────────
 const wrap = document.getElementById('canvas-wrap');
-const W = () => wrap.clientWidth;
-const H = () => wrap.clientHeight;
+const W = () => wrap.clientWidth || window.innerWidth;
+const H = () => wrap.clientHeight || window.innerHeight;
 
 // Cameras
 const camOrtho = new THREE.OrthographicCamera(-2,2,2,-2,0.01,100);
@@ -1179,6 +1180,18 @@ window.addEventListener('resize', () => {
 })();
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
+// Force correct size after DOM is ready (fixes mobile 0-size issue)
+requestAnimationFrame(() => {
+  const w = W(), h = H();
+  if (w > 0 && h > 0) {
+    renderer.setSize(w, h);
+    composer.setSize(w, h);
+    camOrtho.left = -2 * (w/h); camOrtho.right = 2 * (w/h);
+    camOrtho.updateProjectionMatrix();
+    camPersp.aspect = w / h;
+    camPersp.updateProjectionMatrix();
+  }
+});
 rebuildMesh();
 
 </script>
