@@ -1228,11 +1228,15 @@ document.getElementById('btn-export').addEventListener('click', () => {
 
 // Reset cam
 document.getElementById('btn-reset-cam').addEventListener('click', () => {
-  camOrtho.position.set(0, 0, 8);
+  // Reset to front view (looking straight at Z+)
+  const frontPos = new THREE.Vector3(0, 0, 5);
+  camOrtho.position.copy(frontPos);
+  camOrtho.up.set(0, 1, 0);
   camOrtho.lookAt(0, 0, 0);
   camOrtho.zoom = 1;
   camOrtho.updateProjectionMatrix();
-  camPersp.position.set(0, 0, 8);
+  camPersp.position.copy(frontPos);
+  camPersp.up.set(0, 1, 0);
   camPersp.lookAt(0, 0, 0);
   camPersp.updateProjectionMatrix();
   controls.target.set(0, 0, 0);
